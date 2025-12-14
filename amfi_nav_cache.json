@@ -1,3 +1,10 @@
+function searchMF(query) {
+  query = query.toLowerCase();
+  return mfDB.filter(m =>
+    m.name.toLowerCase().includes(query)
+  ).slice(0, 15);
+}
+
 async function getNAV(symbol, amfiCode, years) {
   try {
     return await fetchYahooHistory(symbol, years);
@@ -7,9 +14,4 @@ async function getNAV(symbol, amfiCode, years) {
     return data[amfiCode];
   }
 }
-function searchMF(query) {
-  query = query.toLowerCase();
-  return mfDB.filter(m =>
-    m.name.toLowerCase().includes(query)
-  ).slice(0, 15);
-}
+
