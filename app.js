@@ -1,7 +1,7 @@
 import { loadMF, plotNAV } from './analytics.js';
 import { buildFactsheet } from './pdf.js';
 
-const masterURL = "https://raw.githubusercontent.com/YOURNAME/mf-data-cache/main/mf_master.json";
+const masterURL = "https://raw.githubusercontent.com/system4trading/mf-analytics/blob/main/mf-data-cache/mf_master.json";
 
 let mfMaster = [];
 
