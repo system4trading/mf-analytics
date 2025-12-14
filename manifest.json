@@ -1,1 +1,14 @@
 
+{
+  "name": "Indian Mutual Fund Analyzer",
+  "short_name": "MF Analyzer",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "icons": [{
+    "src": "assets/logo.png",
+    "sizes": "192x192",
+    "type": "image/png"
+  }]
+}
