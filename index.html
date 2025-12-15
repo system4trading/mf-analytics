@@ -1,1 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hybrid MF Analyzer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="AMFI & Nifty powered mutual fund analytics platform">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="pdf.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<header>
+  <img src="assets/logo.png" height="40">
+  <h2>Hybrid MF Analyzer</h2>
+</header>
+
+<input id="search" placeholder="Search Mutual Fund">
+<div id="results"></div>
+
+<canvas id="chart"></canvas>
+<div id="factsheet"></div>
+
+<button onclick="exportPDF()">Download AMFI Factsheet</button>
+
+<script src="app.js"></script>
+</body>
+</html>
 
