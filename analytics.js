@@ -1,4 +1,4 @@
-const BASE = "https://raw.githubusercontent.com/system4trading/mf-data-cache/main/";
+const BASE = "https://raw.githubusercontent.com/system4trading/mf-data-cache/";
 
 export async function analyzeMF(code) {
   const nav = await fetch(`${BASE}amfi/nav_${code}.json`).then(r => r.json());
