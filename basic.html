@@ -47,6 +47,21 @@ canvas{max-height:350px}
 </div>
 
 <div class="card">
+  <h3>📊 MF Screener</h3>
+  <select id="fCategory">
+    <option value="">All Categories</option>
+    <option>Equity Large Cap</option>
+    <option>Equity Mid Cap</option>
+  </select>
+
+  <input id="fReturn" placeholder="Min 3Y Return %" />
+  <input id="fRisk" placeholder="Max Volatility %" />
+  <button onclick="runScreener()">Filter</button>
+
+  <div id="screenResults"></div>
+</div>
+
+<div class="card">
 <h3>🔍 Search Mutual Fund Scheme</h3>
 <input id="mfSearch" placeholder="Type scheme name" oninput="searchMF()">
 <div id="mfResults"></div>
