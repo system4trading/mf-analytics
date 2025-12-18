@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -13,617 +13,692 @@
 
 <style>
   :root{
-    --bg:#ffffff; --card:#f7f8fb; --text:#111; --muted:#555; --accent:#1766ff;
+    --bg:#ffffff; --card:#f6f8ff; --text:#0b1220; --muted:#54677a; --accent:#1766ff;
   }
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#0b0f14; --card:#0f1720; --text:#e6eef8; --muted:#9fb0c8; --accent:#2fa1ff; }
-    html,body { background: var(--bg); color:var(--text); }
+    :root{ --bg:#07101a; --card:#0c1620; --text:#e6f1fb; --muted:#9fb6cf; --accent:#2fa1ff; }
   }
-  html,body{ background:var(--bg); color:var(--text); font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; padding:0; }
-  .container{ max-width:1150px; margin:18px auto; padding:18px; }
-  h1{ margin:0 0 10px 0; font-size:20px; }
-  .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
-  label{ display:block; font-size:13px; margin-bottom:6px; color:var(--muted); }
-  input, select, button, textarea { padding:10px; font-size:14px; border-radius:8px; border:1px solid #dfe6f2; background:transparent; color:var(--text); }
+
+  html,body{ margin:0; padding:0; height:100%; background:var(--bg); color:var(--text); font-family:Inter,system-ui,Segoe UI,Roboto,Arial; }
+  .wrap{ max-width:1200px; margin:12px auto; padding:12px; box-sizing:border-box; }
+  header{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  h1{ margin:0; font-size:20px; }
+  .card{ background:var(--card); border-radius:12px; padding:12px; margin-top:12px; box-shadow: 0 6px 20px rgba(0,0,0,0.04); }
+  .row{ display:flex; gap:12px; align-items:end; flex-wrap:wrap; }
+  label{ display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+  input, select, button, textarea { padding:10px; border-radius:8px; border:1px solid rgba(0,0,0,0.08); background:transparent; color:var(--text); font-size:14px; }
   button{ background:var(--accent); color:white; border:none; cursor:pointer; }
-  button.secondary{ background:#0a8; }
-  .card{ background:var(--card); border-radius:10px; padding:14px; margin-top:12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-  .two { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-  pre{ background: rgba(0,0,0,0.05); padding:12px; border-radius:8px; overflow:auto; white-space:pre-wrap; color:var(--text); }
-  canvas{ width:100% !important; display:block; margin-top:12px; background:var(--bg); border-radius:8px; }
-  .muted{ color:var(--muted); font-size:13px; }
-  .search-results{ position:relative; }
-  .results-list{ position:absolute; left:0; right:0; z-index:20; background:var(--card); border:1px solid #dfe6f2; max-height:220px; overflow:auto; border-radius:8px; margin-top:6px; }
-  .results-item{ padding:8px 10px; cursor:pointer; }
-  .results-item:hover{ background:#e8f1ff; }
-  @media (max-width:880px){ .two{ grid-template-columns: 1fr; } .row{ flex-direction:column; align-items:stretch; } }
+  button.ghost{ background:transparent; color:var(--text); border:1px solid rgba(0,0,0,0.06); }
+  .grow{ flex:1; min-width:220px; }
+  .small{ font-size:13px; color:var(--muted); }
+  canvas{ width:100% !important; border-radius:8px; margin-top:10px; background:transparent; }
+  pre{ background:rgba(0,0,0,0.03); padding:12px; border-radius:8px; white-space:pre-wrap; color:var(--text); }
+  .two{ display:grid; grid-template-columns:1fr 420px; gap:12px; }
+  @media (max-width:980px){ .two{ grid-template-columns:1fr; } .row{ flex-direction:column; align-items:stretch; } }
+  /* autocomplete */
+  .searchWrapper{ position:relative; }
+  .resultsBox{ position:absolute; left:0; right:0; top:62px; max-height:260px; overflow:auto; background:var(--card); border-radius:8px; border:1px solid rgba(0,0,0,0.06); z-index:50; display:none; }
+  .resultItem{ padding:10px; cursor:pointer; border-bottom:1px solid rgba(0,0,0,0.02); }
+  .resultItem:hover{ background:rgba(0,0,0,0.04); }
+  .meta{ font-size:12px; color:var(--muted); margin-top:6px; }
+  .controls{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .link{ color:var(--accent); text-decoration:none; }
 </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Mutual Fund Analyzer — Compare to Nifty 50</h1>
+  <div class="wrap" id="appWrap">
+    <header>
+      <h1>Mutual Fund Analyzer — Nifty 50 Comparison</h1>
+      <div style="margin-left:auto" class="controls">
+        <label style="margin:0 8px 0 0">Theme</label>
+        <select id="themeSelect" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </header>
 
     <div class="card">
       <div class="row">
-        <div style="flex:1; min-width:260px">
-          <label>Mutual Fund (symbol or scheme name)</label>
-          <div class="search-results">
-            <input id="mfInput" placeholder="e.g. ICICIPRULI.NS or 'HDFC Balanced Advantage'">
-            <div id="resultsList" class="results-list" style="display:none"></div>
-          </div>
+        <div class="grow searchWrapper">
+          <label>Mutual Fund (type name or symbol)</label>
+          <input id="mfInput" placeholder="Type scheme name e.g. 'HDFC Balanced Advantage' or 'HDFCBALANCE.NS'"/>
+          <div id="resultsBox" class="resultsBox" role="listbox"></div>
+          <div class="meta small" id="selectedMeta">No symbol selected</div>
         </div>
 
         <div style="width:140px">
           <label>Period</label>
-          <select id="period"><option value="1y">1 Year</option><option value="3y">3 Years</option><option value="5y">5 Years</option></select>
+          <select id="period">
+            <option value="1y">1 Year</option>
+            <option value="3y">3 Years</option>
+            <option value="5y">5 Years</option>
+          </select>
         </div>
 
-        <div style="width:160px">
+        <div style="width:140px">
           <label>Rolling window</label>
           <select id="rollingWindow"><option value="252">1y (252)</option><option value="126">6m (126)</option><option value="63">3m (63)</option></select>
         </div>
 
-        <div style="width:150px">
-          <label>Risk-free rate %</label>
-          <input id="rf" value="6">
+        <div style="width:140px">
+          <label>Risk-free %</label>
+          <input id="rf" value="6" />
         </div>
 
-        <div style="width:160px">
+        <div style="min-width:160px">
           <label>&nbsp;</label>
-          <button id="searchBtn">Search</button>
-          <button id="runBtn" style="margin-left:8px">Run Analysis</button>
+          <div style="display:flex; gap:8px">
+            <button id="runBtn">Run Analysis</button>
+            <button id="shareBtn" class="ghost">Share</button>
+          </div>
         </div>
       </div>
 
-      <div class="row" style="margin-top:10px">
-        <div style="min-width:220px">
-          <label>Expense ratio (annual %, optional)</label>
-          <input id="expenseRatio" placeholder="e.g. 1.2">
-        </div>
-        <div style="min-width:180px">
-          <label>Avg P/E (if known)</label>
-          <input id="avgPE" placeholder="auto if available">
-        </div>
-        <div style="min-width:180px">
-          <label>Avg Dividend Yield % (if known)</label>
-          <input id="avgYield" placeholder="auto if available">
-        </div>
-
-        <div style="margin-left:auto">
-          <label>&nbsp;</label>
-          <button id="exportCSV">Export CSV</button>
-          <button id="exportPDF" style="margin-left:8px">Export PDF</button>
-          <button id="shareBtn" style="margin-left:8px" class="secondary">Share</button>
-        </div>
-      </div>
+      <div class="small meta" style="margin-top:8px">Search shows mutual funds/ETFs (.NS) and common listings. Choose from dropdown to select exact Yahoo symbol.</div>
     </div>
 
     <div class="two">
       <div class="card">
-        <h3 style="margin:6px 0">Key Metrics</h3>
-        <pre id="metrics">No analysis yet — enter a symbol or name and click Run Analysis.</pre>
-        <div class="muted" style="margin-top:8px">Avg P/E and Dividend Yield will attempt automatic fetch; if not available you can enter them manually above.</div>
+        <h3>Summary Metrics</h3>
+        <pre id="metrics">Run analysis to compute metrics.</pre>
+
+        <div style="margin-top:8px" class="controls">
+          <button id="exportCSV" class="ghost">Export CSV</button>
+          <button id="exportPDF" class="ghost">Export PDF</button>
+          <button id="resetBtn" class="ghost">Reset</button>
+        </div>
       </div>
 
       <div class="card">
-        <h3 style="margin:6px 0">SIP / Lump-sum & Withdrawal Tools</h3>
+        <h3>SIP / Comparison / SWP</h3>
 
-        <div style="display:flex; gap:8px; margin-bottom:8px">
-          <input id="sipAmount" placeholder="Monthly SIP (INR)" style="flex:1">
-          <select id="sipYears" style="width:110px"><option>1</option><option selected>3</option><option>5</option><option>10</option><option>15</option></select>
+        <label>Monthly SIP (INR)</label>
+        <input id="sipAmount" placeholder="e.g. 5000">
+
+        <label>SIP Tenure (years)</label>
+        <select id="sipYears"><option>1</option><option selected>3</option><option>5</option><option>10</option><option>15</option></select>
+
+        <label>Expected annual return % (optional — uses fund's computed if blank)</label>
+        <input id="sipExpected" placeholder="leave blank to use fund's annual return">
+
+        <div style="display:flex; gap:8px; margin-top:8px">
+          <button id="calcSIP">Calc SIP</button>
+          <button id="compareLump" class="ghost">SIP vs Lump-sum</button>
         </div>
 
-        <div style="display:flex; gap:8px; margin-bottom:8px">
-          <input id="sipExpected" placeholder="Expected annual % (optional) - uses fund if blank)" style="flex:1">
-          <button id="calcSIP" style="width:160px">Calc SIP</button>
+        <hr style="margin:12px 0">
+
+        <label>SWP / Withdrawal</label>
+        <input id="swPortfolio" placeholder="Portfolio value (INR)">
+        <div style="display:flex; gap:8px; margin-top:8px">
+          <input id="swYears" placeholder="Years" />
+          <input id="swReturn" placeholder="Expected annual return %" />
+          <input id="swInflation" placeholder="Inflation %" />
+        </div>
+        <div style="margin-top:8px">
+          <button id="calcSWP">Calc SWP</button>
         </div>
 
-        <div style="display:flex; gap:8px; margin-bottom:8px">
-          <input id="lumpAmount" placeholder="Lump-sum amount (INR)" style="flex:1">
-          <button id="compareLump" style="width:160px" class="secondary">Compare Lump</button>
-        </div>
-
-        <hr style="margin:8px 0">
-
-        <div style="display:flex; gap:8px; margin-bottom:8px">
-          <input id="swPortfolio" placeholder="Portfolio value (INR)" style="flex:1">
-          <select id="swYears" style="width:110px"><option>5</option><option selected>10</option><option>15</option></select>
-        </div>
-        <div style="display:flex; gap:8px; margin-bottom:8px">
-          <input id="swReturn" placeholder="Expected return % during withdrawal" style="flex:1">
-          <input id="swInflation" placeholder="Inflation %" style="width:110px">
-        </div>
-        <div style="display:flex; gap:8px">
-          <button id="calcSW" style="width:160px">Calc Withdrawal</button>
-          <div id="sipResult" style="flex:1; padding:8px; border:1px dashed #dfe6f2; border-radius:8px; min-height:64px"></div>
-        </div>
+        <pre id="sipResult" style="margin-top:8px">SIP / SWP results will appear here.</pre>
       </div>
     </div>
 
     <div class="card">
-      <h3 style="margin:6px 0">Charts</h3>
-      <canvas id="priceChart" height="200"></canvas>
+      <h3>Charts</h3>
+      <canvas id="priceChart" height="220"></canvas>
       <canvas id="rollingChart" height="160"></canvas>
       <canvas id="drawdownChart" height="120"></canvas>
+
+      <h4 style="margin-top:14px">SIP vs Lump-sum Comparison</h4>
+      <canvas id="sipCompareChart" height="160"></canvas>
     </div>
 
-    <div class="card" style="margin-top:12px">
-      <h3 style="margin:6px 0">Raw / debug</h3>
-      <textarea id="raw" style="width:100%;height:120px;border-radius:8px;padding:10px" readonly></textarea>
+    <div class="card" style="margin-bottom:40px">
+      <h3>Raw / Debug</h3>
+      <textarea id="raw" style="width:100%;height:120px;border-radius:8px;padding:10px"></textarea>
     </div>
   </div>
 
 <script>
-/* --------------------------
- Utilities & Yahoo endpoints
+/* -------------------------
+  Utility & config
 ---------------------------*/
+const resultsBox = document.getElementById('resultsBox');
+const mfInput = document.getElementById('mfInput');
+const selectedMeta = document.getElementById('selectedMeta');
+const periodEl = document.getElementById('period');
+const runBtn = document.getElementById('runBtn');
+const rfEl = document.getElementById('rf');
+const rollingWindowEl = document.getElementById('rollingWindow');
+const metricsEl = document.getElementById('metrics');
+const rawEl = document.getElementById('raw');
 
-/** Convert date to UNIX timestamp (seconds) */
-function toUnix(dt) { return Math.floor(dt.getTime()/1000); }
+let selectedSymbol = null;
+let lastSnapshot = null;
 
-/** Yahoo search: returns list of matches [{symbol,shortname,exchange}] */
-async function yahooSearch(q){
-  const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10&newsCount=0`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Search failed');
-  const j = await res.json();
-  const quotes = j?.quotes || [];
-  return quotes.map(x=>({ symbol: x.symbol, name: x.shortname || x.longname || x.displayName || x.name, exch: x.exchange || x.exchangeTimezoneName || '' }));
+/* Theme switcher */
+const themeSelect = document.getElementById('themeSelect');
+function applyTheme(mode){
+  if(mode==='auto'){ document.documentElement.style.removeProperty('color-scheme'); /* let system decide */ }
+  else if(mode==='light'){ document.documentElement.style.colorScheme = 'light'; document.documentElement.style.setProperty('--bg','#ffffff'); }
+  else if(mode==='dark'){ document.documentElement.style.colorScheme = 'dark'; document.documentElement.style.setProperty('--bg','#07101a'); }
+}
+themeSelect.addEventListener('change', ()=>applyTheme(themeSelect.value));
+applyTheme('auto');
+
+/* -------------------------
+  Yahoo Search (autocomplete)
+  Uses query2.finance.yahoo.com/v1/finance/search
+---------------------------*/
+let searchDeb = null;
+mfInput.addEventListener('input', ()=>{
+  const q = mfInput.value.trim();
+  if(!q){ resultsBox.style.display='none'; return; }
+  if (searchDeb) clearTimeout(searchDeb);
+  searchDeb = setTimeout(()=>searchYahoo(q), 300);
+});
+
+async function searchYahoo(q){
+  resultsBox.innerHTML = '';
+  resultsBox.style.display = 'none';
+  try{
+    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=20&newsCount=0`;
+    const r = await fetch(url);
+    if(!r.ok) throw new Error('search failed');
+    const j = await r.json();
+    const items = (j.quotes || []).filter(x=> {
+      // prefer MUTUALFUND, ETF, or symbols that end with .NS
+      return x.quoteType === 'MUTUALFUND' || x.quoteType === 'ETF' || (x.symbol && x.symbol.endsWith('.NS'));
+    });
+    if(items.length === 0){ resultsBox.style.display='none'; return; }
+    for(const it of items){
+      const div = document.createElement('div');
+      div.className='resultItem';
+      div.innerHTML = `<strong>${it.symbol}</strong> — ${it.shortname || it.longname || it.exchange || ''}<div class="small">${it.exchange || ''} • ${it.quoteType || ''}</div>`;
+      div.onclick = ()=>{
+        selectedSymbol = it.symbol;
+        mfInput.value = it.shortname || it.longname || it.symbol;
+        selectedMeta.textContent = `Selected: ${it.symbol} • ${it.shortname || it.longname || ''}`;
+        resultsBox.style.display='none';
+      };
+      resultsBox.appendChild(div);
+    }
+    resultsBox.style.display='block';
+  }catch(err){
+    console.warn('Search failed', err);
+    resultsBox.style.display='none';
+  }
 }
 
-/** Yahoo historical CSV using period1/period2 — more reliable */
-async function yahooHistoryCSV(symbol, range){
-  // range e.g. "1y","3y","5y"
+document.addEventListener('click', e=>{
+  if(!resultsBox.contains(e.target) && e.target !== mfInput) resultsBox.style.display='none';
+});
+
+/* -------------------------
+  Yahoo historical CSV fetch (period1/period2)
+  range: '1y','3y','5y'
+---------------------------*/
+function toUnix(dt){ return Math.floor(dt.getTime()/1000); }
+async function fetchHistory(symbol, range){
   const now = new Date();
-  let from = new Date();
-  if (range === '1y') from.setFullYear(now.getFullYear()-1);
-  else if (range === '3y') from.setFullYear(now.getFullYear()-3);
-  else if (range === '5y') from.setFullYear(now.getFullYear()-5);
-  // ensure inclusive day
+  let from = new Date(now);
+  if(range === '1y') from.setFullYear(now.getFullYear()-1);
+  else if(range === '3y') from.setFullYear(now.getFullYear()-3);
+  else from.setFullYear(now.getFullYear()-5);
   const period1 = toUnix(new Date(from.getFullYear(), from.getMonth(), from.getDate()));
   const period2 = toUnix(new Date(now.getFullYear(), now.getMonth(), now.getDate()+1));
   const url = `https://query1.finance.yahoo.com/v7/finance/download/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d&events=history&includeAdjustedClose=true`;
   const r = await fetch(url);
-  if (!r.ok) throw new Error(`Historical fetch failed (${r.status}) for ${symbol}`);
+  if(!r.ok) throw new Error(`Historical fetch failed (${r.status}) for ${symbol}`);
   const txt = await r.text();
   return parseCSV(txt);
 }
-
-/** Parse Yahoo CSV to [{date,close}] */
-function parseCSV(csv){
-  const lines = csv.trim().split('\n').slice(1);
+function parseCSV(txt){
+  const lines = txt.trim().split('\\n').slice(1);
   const out = [];
-  for (const line of lines){
+  for(const line of lines){
     const cols = line.split(',');
     const date = cols[0];
-    const adjClose = parseFloat(cols[5] || cols[4]);
-    if (!isNaN(adjClose)) out.push({ date, close: adjClose });
+    const adj = parseFloat(cols[5] || cols[4]);
+    if(!isNaN(adj)) out.push({ date, close: adj });
   }
   return out;
 }
 
-/** Try fetch basic fundamentals via search/autocomplete (public) */
-async function yahooSummaryBasic(symbol){
-  try {
-    const sUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(symbol)}`;
-    const r = await fetch(sUrl);
-    if (!r.ok) return { pe: null, dividendYield: null };
-    const j = await r.json();
-    const best = (j?.quotes || [])[0] || null;
-    return { pe: best?.trailingPE || null, dividendYield: best?.dividendYield ? best.dividendYield * 100 : null };
-  } catch(e){ return { pe: null, dividendYield: null }; }
-}
-
-/* --------------------------
- Statistical helpers
+/* -------------------------
+  Financial Math Helpers
 ---------------------------*/
-const mean = arr => arr.reduce((s,x)=>s+x,0)/arr.length;
-const variance = arr => { const m = mean(arr); return arr.reduce((s,x)=>s+(x-m)*(x-m),0)/arr.length; };
+const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+const variance = arr => { const m = mean(arr); return mean(arr.map(x=> (x-m)*(x-m))); };
 const stdev = arr => Math.sqrt(variance(arr));
-function dailyReturns(series){ const out=[]; for (let i=1;i<series.length;i++){ out.push((series[i].close - series[i-1].close)/series[i-1].close); } return out; }
-function covariance(a,b){ const n = Math.min(a.length,b.length); const as = a.slice(a.length-n), bs = b.slice(b.length-n); const ma = mean(as), mb = mean(bs); let s=0; for (let i=0;i<n;i++) s += (as[i]-ma)*(bs[i]-mb); return s/n;}
-function correlation(a,b){ const den = stdev(a)*stdev(b); return den === 0 ? 0 : covariance(a,b)/den; }
-function regressionRSquared(x,y){ const n = Math.min(x.length,y.length); const xs = x.slice(x.length-n), ys = y.slice(y.length-n); const xm = mean(xs), ym = mean(ys); let num=0, den=0; for (let i=0;i<n;i++){ num += (xs[i]-xm)*(ys[i]-ym); den += (xs[i]-xm)*(xs[i]-xm); } const slope = den===0?0:num/den; const intercept = ym - slope*xm; let ssRes=0, ssTot=0; for (let i=0;i<n;i++){ const pred = intercept + slope*xs[i]; ssRes += (ys[i]-pred)*(ys[i]-pred); ssTot += (ys[i]-ym)*(ys[i]-ym); } const r2 = ssTot === 0 ? 0 : Math.max(0,1 - ssRes/ssTot); return { slope, intercept, r2 }; }
+function dailyReturns(series){ const out=[]; for(let i=1;i<series.length;i++) out.push((series[i].close - series[i-1].close)/series[i-1].close); return out; }
+function covariance(a,b){ const n=Math.min(a.length,b.length); const as=a.slice(a.length-n), bs=b.slice(b.length-n); const ma=mean(as), mb=mean(bs); let s=0; for(let i=0;i<n;i++) s += (as[i]-ma)*(bs[i]-mb); return s/n; }
+function correlation(a,b){ const den = stdev(a)*stdev(b); return den===0?0:covariance(a,b)/den; }
+function regressionRSquared(x,y){ const n=Math.min(x.length,y.length); const xs=x.slice(x.length-n), ys=y.slice(y.length-n); const xm=mean(xs), ym=mean(ys); let num=0, den=0; for(let i=0;i<n;i++){ num += (xs[i]-xm)*(ys[i]-ym); den += (xs[i]-xm)*(xs[i]-xm); } const slope = den===0?0:num/den; const intercept = ym - slope*xm; let ssRes=0, ssTot=0; for(let i=0;i<n;i++){ const pred = intercept + slope*xs[i]; ssRes += (ys[i]-pred)*(ys[i]-pred); ssTot += (ys[i]-ym)*(ys[i]-ym); } const r2 = ssTot===0?0:Math.max(0,1 - ssRes/ssTot); return { slope, intercept, r2 }; }
 
-/* Rolling returns (annualized) */
+/* Rolling returns/rolling stats */
 function rollingReturns(series, windowDays){
-  const out=[];
-  for (let i=windowDays;i<series.length;i++){
+  const out=[]; // {date, value}
+  for(let i=windowDays;i<series.length;i++){
     const start = series[i-windowDays].close; const end = series[i].close;
-    if (start>0) out.push({ date: series[i].date, value: Math.pow(end/start, 252/windowDays) - 1 });
+    if(start>0) out.push({ date: series[i].date, value: Math.pow(end/start, 252/windowDays) - 1 });
     else out.push({ date: series[i].date, value: null });
   }
   return out;
 }
-
-/* Rolling stats from returns array (returnsWithDate: [{date,value}]) */
 function computeRollingStats(returnsWithDate, windowDays, rfAnnual){
-  const out = [];
-  for (let i=windowDays;i<returnsWithDate.length;i++){
+  const out=[];
+  for(let i=windowDays;i<returnsWithDate.length;i++){
     const slice = returnsWithDate.slice(i-windowDays, i).map(x=>x.value);
     const m = mean(slice); const sd = stdev(slice);
-    const annRet = m*252; const annVol = sd*Math.sqrt(252); const sharpe = annVol===0 ? 0 : (annRet - rfAnnual)/annVol;
+    const annRet = m * 252; const annVol = sd * Math.sqrt(252); const sharpe = annVol===0?0:(annRet - rfAnnual)/annVol;
     out.push({ date: returnsWithDate[i].date, annRet, annVol, sharpe });
   }
   return out;
 }
-
-/* Drawdown */
 function drawdownSeries(series){
-  let peak = -Infinity; const out=[]; let maxDD = 0;
-  for (let i=0;i<series.length;i++){ const p = series[i].close; if (p>peak) peak=p; const dd=(peak - p)/peak; if (dd>maxDD) maxDD = dd; out.push({date:series[i].date, dd}); }
+  let peak = -Infinity; const out=[]; let maxDD=0;
+  for(const d of series){ if(d.close>peak) peak=d.close; const dd=(peak-d.close)/peak; if(dd>maxDD) maxDD=dd; out.push({date:d.date, dd}); }
   return { series: out, maxDrawdown: maxDD };
 }
 
-/* SIP / Lump / SWP helpers */
-function sipFutureValue(pmt, annualRate, years){
-  const months = Math.round(years*12); const i = annualRate/12; if (Math.abs(i) < 1e-12) return { fv: pmt*months, invested: pmt*months, months }; const fv = pmt * ((Math.pow(1+i, months) - 1) / i); return { fv, invested: pmt*months, months };
-}
-function lumpFuture(principal, annualRate, years){ return principal * Math.pow(1+annualRate, years); }
-function withdrawalAnn(portfolio, years, annualReturn, inflation){ const r = annualReturn - inflation; const n = years; if (Math.abs(r) < 1e-12) return portfolio/n; return (portfolio * r) / (1 - Math.pow(1+r, -n)); }
-
-/* --------------------------
- UI elements & charts
+/* -------------------------
+  Charts setup
 ---------------------------*/
-const mfInput = document.getElementById('mfInput');
-const resultsList = document.getElementById('resultsList');
-const runBtn = document.getElementById('runBtn');
-const searchBtn = document.getElementById('searchBtn');
-const metricsEl = document.getElementById('metrics');
-const rawEl = document.getElementById('raw');
+let priceChart=null, rollingChart=null, drawdownChart=null, sipCompareChart=null;
+function destroyCharts(){
+  if(priceChart) priceChart.destroy();
+  if(rollingChart) rollingChart.destroy();
+  if(drawdownChart) drawdownChart.destroy();
+  if(sipCompareChart) sipCompareChart.destroy();
+}
 
-let lastSnapshot = null;
-let priceChart=null, rollingChart=null, drawdownChart=null;
-
-/* Render charts */
-function renderPriceChart(dates, fundVals, idxVals){
+/* draw price + Nifty and overlay rolling Sharpe as dashed line on second axis */
+function drawPriceChart(dates, fundVals, idxVals, rollingSharpeSeries){
   const ctx = document.getElementById('priceChart').getContext('2d');
-  if (priceChart) priceChart.destroy();
+  if(priceChart) priceChart.destroy();
   priceChart = new Chart(ctx, {
     type:'line',
-    data:{ labels:dates, datasets:[
-      { label:'Fund NAV', data: fundVals, borderWidth:1.5, pointRadius:0 },
-      { label:'Nifty50', data: idxVals, borderWidth:1.5, pointRadius:0 }
+    data:{ labels: dates, datasets:[
+      { label:'Fund NAV', data: fundVals, borderWidth:1.5, pointRadius:0, tension:0.15 },
+      { label:'Nifty50', data: idxVals, borderWidth:1.5, pointRadius:0, tension:0.15, borderColor:'#888' },
+      // rollingSharpe overlay uses separate axis (y2)
+      { label:'Rolling Sharpe (scaled)', data: rollingSharpeSeries.map(v=> v === null ? null : v*100), borderWidth:1, pointRadius:0, borderDash:[6,4], yAxisID:'y2', borderColor:'#ff6600' }
     ]},
-    options:{ maintainAspectRatio:false, interaction:{mode:'index',intersect:false} }
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      scales:{
+        y:{ position:'left', title:{display:true,text:'Price' } },
+        y2:{ position:'right', type:'linear', title:{display:true,text:'Sharpe*100'}, grid:{ display:false } }
+      },
+      plugins:{ legend:{ position:'top' } }
+    }
   });
 }
-function renderRollingChart(dates, regReturns, vol, sharpe){
+
+function drawRollingChart(dates, annReturns, annVol, sharpeSeries){
   const ctx = document.getElementById('rollingChart').getContext('2d');
-  if (rollingChart) rollingChart.destroy();
+  if(rollingChart) rollingChart.destroy();
   rollingChart = new Chart(ctx, {
     type:'line',
-    data:{ labels:dates, datasets:[
-      { label:'Rolling Return (ann %)', data: regReturns.map(v=>v*100), yAxisID:'y1', borderWidth:1.2, pointRadius:0 },
-      { label:'Rolling Vol (ann %)', data: vol.map(v=>v*100), yAxisID:'y1', borderWidth:1.2, pointRadius:0, borderDash:[6,4] },
-      { label:'Rolling Sharpe', data: sharpe, yAxisID:'y2', borderWidth:1.2, pointRadius:0, borderColor:'#ff6600' }
+    data:{ labels: dates, datasets:[
+      { label:'Rolling Return (ann %)', data: annReturns.map(v=>v*100), borderWidth:1.2, pointRadius:0 },
+      { label:'Rolling Vol (ann %)', data: annVol.map(v=>v*100), borderWidth:1.2, pointRadius:0, borderDash:[4,4] },
+      { label:'Rolling Sharpe', data: sharpeSeries, borderWidth:1.2, pointRadius:0, borderColor:'#ff6600', yAxisID:'y2' }
     ]},
-    options:{ maintainAspectRatio:false, scales:{ y1:{ position:'left', ticks:{ callback: v => v + '%' }, title:{display:true,text:'%'} }, y2:{ position:'right', title:{display:true,text:'Sharpe'} } } }
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        y:{ position:'left', ticks:{ callback: v => v + '%' } },
+        y2:{ position:'right', ticks:{ callback: v => v.toFixed(2) } }
+      }
+    }
   });
 }
-function renderDrawdown(dates, dd){
+
+function drawDrawdownChart(dates, ddSeries){
   const ctx = document.getElementById('drawdownChart').getContext('2d');
-  if (drawdownChart) drawdownChart.destroy();
+  if(drawdownChart) drawdownChart.destroy();
   drawdownChart = new Chart(ctx, {
     type:'line',
-    data:{ labels:dates, datasets:[ { label:'Drawdown (%)', data: dd.map(v=>v*100), borderWidth:1.2, pointRadius:0, backgroundColor:'rgba(255,0,0,0.06)' } ]},
-    options:{ maintainAspectRatio:false }
+    data:{ labels: dates, datasets:[ { label:'Drawdown (%)', data: ddSeries.map(v=>v*100), borderWidth:1.2, pointRadius:0, backgroundColor:'rgba(255,0,0,0.06)' } ]},
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ ticks:{ callback: v => v + '%' } } } }
   });
 }
 
-/* --------------------------
- Symbol search flow
----------------------------*/
-let searchTimeout = null;
-mfInput.addEventListener('input', ()=>{
-  const q = mfInput.value.trim();
-  if (!q) { resultsList.style.display='none'; resultsList.innerHTML=''; return; }
-  // debounce
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(async ()=>{
-    try {
-      const items = await yahooSearch(q);
-      if (!items || items.length === 0){ resultsList.style.display='none'; resultsList.innerHTML=''; return; }
-      resultsList.innerHTML = items.map(it => `<div class="results-item" data-symbol="${it.symbol}"><strong>${it.symbol}</strong> — ${it.name || ''} <span style="color:var(--muted);font-size:12px">(${it.exch||''})</span></div>`).join('');
-      resultsList.style.display='block';
-      // attach click events
-      for (const child of resultsList.querySelectorAll('.results-item')){
-        child.onclick = () => { mfInput.value = child.dataset.symbol; resultsList.style.display = 'none'; };
-      }
-    } catch(err){
-      console.warn('Search error', err);
-      resultsList.style.display='none';
-    }
-  }, 350);
-});
+/* SIP vs Lump-sum compare */
+function drawSipCompare(monthLabels, sipSeries, lumpSeries){
+  const ctx = document.getElementById('sipCompareChart').getContext('2d');
+  if(sipCompareChart) sipCompareChart.destroy();
+  sipCompareChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels: monthLabels, datasets:[
+      { label:'SIP Value', data: sipSeries, borderWidth:1.2, pointRadius:0 },
+      { label:'Lump Sum Value', data: lumpSeries, borderWidth:1.2, pointRadius:0, borderDash:[4,4] }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false }
+  });
+}
 
-/* Also explicit Search button */
-searchBtn.addEventListener('click', async ()=>{
-  const q = mfInput.value.trim();
-  if (!q) return alert('Enter name or symbol to search');
-  try {
-    const items = await yahooSearch(q);
-    if (!items || items.length === 0) return alert('No matches found');
-    resultsList.innerHTML = items.map(it => `<div class="results-item" data-symbol="${it.symbol}"><strong>${it.symbol}</strong> — ${it.name || ''} <span style="color:var(--muted);font-size:12px">(${it.exch||''})</span></div>`).join('');
-    resultsList.style.display = 'block';
-    for (const child of resultsList.querySelectorAll('.results-item')){
-      child.onclick = () => { mfInput.value = child.dataset.symbol; resultsList.style.display = 'none'; };
-    }
-  } catch(e){ alert('Search failed: ' + e.message); }
-});
-
-/* --------------------------
- Main analysis flow
+/* -------------------------
+  Core: run analysis
 ---------------------------*/
 runBtn.addEventListener('click', async ()=>{
-  try {
-    metricsEl.textContent = 'Fetching and computing...';
-    rawEl.value = '';
-    // inputs
-    let symbolOrName = mfInput.value.trim();
-    const period = document.getElementById('period').value;
-    const rollingWindow = parseInt(document.getElementById('rollingWindow').value,10);
-    const rf = (parseFloat(document.getElementById('rf').value) || 6) / 100;
-    const expenseRatio = parseFloat(document.getElementById('expenseRatio').value) || null;
-    // if name-like, try to search
-    if (symbolOrName && !symbolOrName.includes('.') && !symbolOrName.startsWith('^') && /[a-zA-Z\s]/.test(symbolOrName) && !/^[A-Z0-9]+$/.test(symbolOrName)){
-      const searchRes = await yahooSearch(symbolOrName);
-      if (searchRes && searchRes.length>0) symbolOrName = searchRes[0].symbol;
-    }
-    if (!symbolOrName) return alert('Enter symbol or name first');
+  if(!selectedSymbol) { alert('Select a symbol from the dropdown first'); return; }
+  const symbol = selectedSymbol;
+  const period = periodEl.value;
+  const rf = (parseFloat(rfEl.value) || 6)/100;
+  const rollingWindow = parseInt(rollingWindowEl.value,10);
 
-    // fetch history
-    const mfSeries = await yahooHistoryCSV(symbolOrName, period);
-    const idxSeries = await yahooHistoryCSV('^NSEI', period);
+  metricsEl.textContent = 'Fetching history...';
+  rawEl.value = '';
 
-    if (mfSeries.length < 30) throw new Error('Insufficient MF history');
-    if (idxSeries.length < 30) throw new Error('Insufficient index history');
+  try{
+    destroyCharts();
+    // fetch fund & index
+    const [fundSeries, idxSeries] = await Promise.all([
+      fetchHistory(symbol, period),
+      fetchHistory('^NSEI', period)
+    ]);
 
     // align by date intersection
-    const idxMap = new Map(idxSeries.map(d=>[d.date, d.close]));
-    const common = mfSeries.filter(d=> idxMap.has(d.date));
-    const alignedIdx = common.map(d => ({ date: d.date, close: idxMap.get(d.date) }));
-    if (common.length < 30) throw new Error('Too few overlapping trading days between fund and index');
+    const idxMap = new Map(idxSeries.map(d=>[d.date,d.close]));
+    const commonFund = fundSeries.filter(d => idxMap.has(d.date));
+    const alignedIdx = commonFund.map(d => ({ date: d.date, close: idxMap.get(d.date) }) );
 
-    const fund = common; // oldest->newest
+    if(commonFund.length < 30) throw new Error('Too few overlapping data points between fund and Nifty');
+
+    // compute returns etc
+    const fund = commonFund; // oldest->newest
     const idx = alignedIdx;
 
-    // returns arrays
     const fundR = dailyReturns(fund);
     const idxR = dailyReturns(idx);
     const n = Math.min(fundR.length, idxR.length);
-    const fR = fundR.slice(-n);
-    const iR = idxR.slice(-n);
+    const fundRtrim = fundR.slice(-n), idxRtrim = idxR.slice(-n);
 
-    // stats
     const annFactor = 252;
-    const meanF = mean(fR), meanI = mean(iR);
-    const sdF = stdev(fR), sdI = stdev(iR);
+    const meanF = mean(fundRtrim), meanI = mean(idxRtrim);
+    const sdF = stdev(fundRtrim), sdI = stdev(idxRtrim);
     const annRetF = meanF * annFactor;
     const annRetI = meanI * annFactor;
-    const annSD_F = sdF * Math.sqrt(annFactor);
-    const totalVar = variance(fR) * annFactor;
-    const cov = covariance(fR, iR);
-    const beta = cov / (variance(iR) || 1e-12);
+    const annSdF = sdF * Math.sqrt(annFactor);
+    const totVar = variance(fundRtrim) * annFactor;
+    const cov = covariance(fundRtrim, idxRtrim);
+    const beta = cov / (variance(idxRtrim) || 1e-12);
     const alpha = annRetF - beta * annRetI;
-    const corr = correlation(fR,iR);
-    const reg = regressionRSquared(iR, fR);
-    const trackingErr = stdev(fR.map((x,i)=> x - iR[i])) * Math.sqrt(annFactor);
-    const sysVar = beta*beta * variance(iR) * annFactor;
-    const unsysVar = totalVar - sysVar;
-    const downs = fR.filter(v=>v<0);
-    const downside = downs.length ? Math.sqrt(mean(downs.map(x=>x*x))) * Math.sqrt(annFactor) : 0;
-    const ddRes = drawdownSeries(fund);
-    const maxDD = ddRes.maxDrawdown;
-    const sharpe = (annRetF - rf) / (annSD_F || 1e-12);
+    const corr = correlation(fundRtrim, idxRtrim);
+    const reg = regressionRSquared(idxRtrim, fundRtrim);
+    const trackErr = stdev(fundRtrim.map((v,i)=> v - idxRtrim[i])) * Math.sqrt(annFactor);
+    const sysVar = beta*beta * variance(idxRtrim) * annFactor;
+    const unsysVar = totVar - sysVar;
+    const negatives = fundRtrim.filter(r=> r < 0);
+    const downside = negatives.length ? Math.sqrt(mean(negatives.map(r=> r*r))) * Math.sqrt(annFactor) : 0;
+    const dd = drawdownSeries(fund);
+    const maxDD = dd.maxDrawdown;
+    const sharpe = (annRetF - rf) / (annSdF || 1e-12);
     const treynor = (annRetF - rf) / (beta || 1e-12);
-    const capmExpected = rf + beta * (annRetI - rf);
-    const excessReturn = annRetF - annRetI;
-    const returnPerUnitRisk = annSD_F? (annRetF / annSD_F) : null;
+    const capmExp = rf + beta * (annRetI - rf);
+    const excess = annRetF - annRetI;
+    const retPerUnitRisk = annSdF ? (annRetF / annSdF) : null;
 
-    // rolling computations
-    const rolling = rollingReturns(fund, rollingWindow);
-    // prepare returnsWithDate for rolling stats
-    const returnsWithDate = [];
-    for (let i=1;i<fund.length;i++) returnsWithDate.push({ date: fund[i].date, value: fundR[i-1] });
-    const rollingStats = computeRollingStats(returnsWithDate, rollingWindow, rf);
-    const rollingDates = rollingStats.map(x=>x.date);
-    const rollingAnn = rollingStats.map(x=>x.annRet);
-    const rollingVol = rollingStats.map(x=>x.annVol);
-    const rollingSharpe = rollingStats.map(x=>x.sharpe);
+    // rolling calculations
+    const returnsWithDates = [];
+    for(let i=1;i<fund.length;i++) returnsWithDates.push({ date: fund[i].date, value: fundR[i-1] });
+    const rollingStats = computeRollingStats(returnsWithDates, rollingWindow, rf);
+    const rollingDates = rollingStats.map(r=>r.date);
+    const rollingAnn = rollingStats.map(r=>r.annRet);
+    const rollingVol = rollingStats.map(r=>r.annVol);
+    const rollingSharpe = rollingStats.map(r=>r.sharpe);
 
-    // fundamentals (best-effort)
-    const basic = await yahooSummaryBasic(symbolOrName);
-    const avgPEInput = parseFloat(document.getElementById('avgPE').value) || (basic.pe || null);
-    const avgYieldInput = parseFloat(document.getElementById('avgYield').value) || (basic.dividendYield || null);
-
-    // prepare display -> human readable
+    // prepare metrics display
     const lines = [];
-    lines.push(`Symbol: ${symbolOrName}`);
-    lines.push(`Period: ${period}  (points used: ${fund.length})`);
+    lines.push(`Symbol: ${symbol}`);
+    lines.push(`Period: ${period} (Points: ${fund.length})`);
     lines.push('--- Performance ---');
     lines.push(`Annual Return (Fund): ${(annRetF*100).toFixed(2)}%`);
-    lines.push(`Annual Return (Nifty): ${(annRetI*100).toFixed(2)}%`);
-    lines.push(`Standard Deviation (daily): ${(sdF*100).toFixed(3)}%`);
-    lines.push(`Annualized SD: ${(annSD_F*100).toFixed(2)}%`);
-    lines.push(`Total Variance (ann): ${totalVar.toFixed(8)}`);
-    lines.push(`Return per Unit Risk: ${returnPerUnitRisk!==null?returnPerUnitRisk.toFixed(3):'N/A'}`);
+    lines.push(`Annual Return (Nifty50): ${(annRetI*100).toFixed(2)}%`);
+    lines.push(`Std Dev (daily): ${(sdF*100).toFixed(3)}%`);
+    lines.push(`Annualized SD: ${(annSdF*100).toFixed(2)}%`);
+    lines.push(`Total Variance (ann): ${totVar.toFixed(8)}`);
+    lines.push(`Return per Unit Risk: ${retPerUnitRisk!==null?retPerUnitRisk.toFixed(3):'N/A'}`);
     lines.push('');
-    lines.push('--- Factor stats ---');
+    lines.push('--- Factor Stats ---');
     lines.push(`Beta: ${beta.toFixed(3)}   Alpha (ann): ${(alpha*100).toFixed(2)}%`);
     lines.push(`Correlation: ${corr.toFixed(3)}   R²: ${reg.r2.toFixed(3)}`);
     lines.push(`Covariance (daily): ${cov.toFixed(8)}`);
-    lines.push(`Tracking Error (ann): ${(trackingErr*100).toFixed(2)}%`);
+    lines.push(`Tracking Error (ann): ${(trackErr*100).toFixed(2)}%`);
     lines.push('');
-    lines.push('--- Risk decomposition ---');
-    lines.push(`Total Var (ann): ${totalVar.toFixed(8)}`);
+    lines.push('--- Risk Decomposition ---');
     lines.push(`Systematic Var (ann): ${sysVar.toFixed(8)}`);
     lines.push(`Unsystematic Var (ann): ${unsysVar.toFixed(8)}`);
     lines.push(`Downside Risk (ann): ${(downside*100).toFixed(2)}%`);
     lines.push(`Max Drawdown: ${(maxDD*100).toFixed(2)}%`);
     lines.push('');
-    lines.push('--- Ratios & expected ---');
+    lines.push('--- Ratios & Expected ---');
     lines.push(`Sharpe (rf ${(rf*100).toFixed(2)}%): ${isFinite(sharpe)?sharpe.toFixed(3):'NA'}`);
     lines.push(`Treynor: ${isFinite(treynor)?treynor.toFixed(3):'NA'}`);
-    lines.push(`CAPM Expected Return: ${(capmExpected*100).toFixed(2)}%`);
-    lines.push(`Excess Return vs Nifty: ${(excessReturn*100).toFixed(2)}%`);
-    lines.push('');
-    lines.push('--- Fundamentals ---');
-    lines.push(`Avg P/E: ${avgPEInput!==null?avgPEInput:'N/A'}`);
-    lines.push(`Avg Dividend Yield %: ${avgYieldInput!==null?avgYieldInput:'N/A'}`);
-    if (expenseRatio) lines.push(`Expense Ratio (input): ${expenseRatio}%`);
+    lines.push(`CAPM Expected Annual Return: ${(capmExp*100).toFixed(2)}%`);
+    lines.push(`Excess Return vs Nifty: ${(excess*100).toFixed(2)}%`);
     lines.push('');
     lines.push(`Timestamp: ${new Date().toLocaleString()}`);
 
     metricsEl.textContent = lines.join('\\n');
 
-    // raw debug
-    rawEl.value = JSON.stringify({ fund: fund.slice(-8), idx: idx.slice(-8), snapshot: { annRetF, annSD_F, beta, alpha, sharpe } }, null, 2);
+    // raw area
+    rawEl.value = JSON.stringify({ fund: fund.slice(-8), idx: idx.slice(-8) }, null, 2);
 
-    // charts
-    renderPriceChart(fund.map(d=>d.date), fund.map(d=>d.close), idx.map(d=>d.close));
-    renderRollingChart(rollingDates, rollingAnn, rollingVol, rollingSharpe);
-    const ddArr = ddRes.series.map(d=>d.dd);
-    renderDrawdown(ddRes.series.map(d=>d.date), ddArr);
+    // draw charts: price + Nifty + rollingSharpe overlay (scaled)
+    // price dataset: fund and idx
+    // Provide rollingSharpeSeries aligned to dates length (pad front with nulls)
+    const rollingSharpeSeries = fund.map((d,i)=>{
+      // map fund[i].date to rollingSharpe if exists
+      const idxR = rollingDates.indexOf(d.date);
+      return idxR >= 0 ? rollingSharpe[idxR] : null;
+    });
 
-    // store snapshot for export/share
+    drawPriceChart(fund.map(d=>d.date), fund.map(d=>d.close), idx.map(d=>d.close), rollingSharpeSeries);
+    drawRollingChart(rollingDates, rollingAnn, rollingVol, rollingSharpe);
+    const ddSeries = dd.series.map(x=>x.dd);
+    drawDrawdownChart(dd.series.map(x=>x.date), ddSeries);
+
+    // store snapshot for export & share
     lastSnapshot = {
-      symbol: symbolOrName, period, timestamp: new Date().toISOString(),
-      fundPoints: fund.length, annRetF, annRetI, annSD_F, sdF, totalVar, cov, beta, alpha, corr, reg, trackingErr, sysVar, unsysVar, downside, maxDD, sharpe, treynor, capmExpected, excessReturn, returnPerUnitRisk, avgPE: avgPEInput, avgYield: avgYieldInput, expenseRatio: expenseRatio,
-      rolling: { window: rollingWindow, dates: rollingDates, annReturns: rollingAnn, vol: rollingVol, sharpe: rollingSharpe }
+      symbol, period, timestamp: new Date().toISOString(),
+      metrics: { annRetF, annRetI, annSdF, sdF, totVar, cov, beta, alpha, corr, reg, trackErr, sysVar, unsysVar, downside, maxDD, sharpe, treynor, capmExp, excess, retPerUnitRisk },
+      rolling: { window: rollingWindow, dates: rollingDates, ann: rollingAnn, vol: rollingVol, sharpe: rollingSharpe },
+      fundSeries: fund, idxSeries: idx
     };
 
-  } catch (err){
+    // enable share button
+    document.getElementById('shareBtn').disabled = false;
+
+  }catch(err){
     console.error(err);
     metricsEl.textContent = 'Error: ' + (err.message || err);
-    rawEl.value = '';
+    rawEl.value = err.stack || '';
   }
 });
 
-/* --------------------------
- Export CSV
+/* -------------------------
+  SIP vs Lump-sum Comparison and SIP calc
 ---------------------------*/
-document.getElementById('exportCSV').addEventListener('click', ()=>{
-  if (!lastSnapshot) return alert('Run analysis first');
-  const s = lastSnapshot;
-  let csv = 'Metric,Value\\n';
-  csv += `Symbol,${s.symbol}\\n`;
-  csv += `Period,${s.period}\\n`;
-  csv += `Timestamp,${s.timestamp}\\n`;
-  csv += `Annual Return Fund (%),${(s.annRetF*100).toFixed(4)}\\n`;
-  csv += `Annualized SD (%),${(s.annSD_F*100).toFixed(4)}\\n`;
-  csv += `Beta,${s.beta}\\n`;
-  csv += `Alpha (%),${(s.alpha*100).toFixed(4)}\\n`;
-  csv += `Sharpe,${s.sharpe}\\n`;
-  csv += `Treynor,${s.treynor}\\n`;
-  csv += `R-squared,${s.reg.r2}\\n`;
-  csv += `Avg PE,${s.avgPE}\\n`;
-  csv += `Avg Dividend Yield (%),${s.avgYield}\\n`;
-  csv += '\\nRollingDate,RollingReturn(%),RollingVol(%),RollingSharpe\\n';
-  for (let i=0;i<s.rolling.dates.length;i++){
-    csv += `${s.rolling.dates[i]},${(s.rolling.annReturns[i]*100).toFixed(4)},${(s.rolling.vol[i]*100).toFixed(4)},${s.rolling.sharpe[i].toFixed(4)}\\n`;
-  }
-  const fname = `${s.symbol || 'report'}_metrics.csv`;
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = fname; document.body.appendChild(link); link.click(); link.remove();
-});
-
-/* --------------------------
- Export PDF using html2canvas + jsPDF
----------------------------*/
-document.getElementById('exportPDF').addEventListener('click', async ()=>{
-  if (!lastSnapshot) return alert('Run analysis first');
-  const node = document.querySelector('.container');
-  document.getElementById('exportPDF').disabled = true;
-  try {
-    const canvas = await html2canvas(node, { scale: 2 });
-    const imgData = canvas.toDataURL('image/png');
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgProps = pdf.getImageProperties(imgData);
-    const imgWidth = pageWidth - 40;
-    const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
-    pdf.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight);
-    pdf.save(`${lastSnapshot.symbol || 'report'}_report.pdf`);
-  } catch (e){ alert('PDF export failed: '+ e.message); console.error(e); }
-  document.getElementById('exportPDF').disabled = false;
-});
-
-/* --------------------------
- Share snapshot (encode in URL hash)
----------------------------*/
-document.getElementById('shareBtn').addEventListener('click', ()=>{
-  if (!lastSnapshot) return alert('Run analysis first');
-  const json = JSON.stringify(lastSnapshot);
-  const b64 = btoa(unescape(encodeURIComponent(json)));
-  const url = location.origin + location.pathname + '#' + b64;
-  navigator.clipboard?.writeText(url).then(()=> alert('Share link copied to clipboard') ).catch(()=> prompt('Copy link', url));
-});
-
-/* if page opened with share hash, decode and show */
-function loadShared(){
-  if (!location.hash) return;
-  try {
-    const b64 = location.hash.slice(1);
-    const json = decodeURIComponent(escape(atob(b64)));
-    const snap = JSON.parse(json);
-    lastSnapshot = snap;
-    metricsEl.textContent = `Loaded shared snapshot for ${snap.symbol} (${snap.period}), timestamp ${snap.timestamp}. Click Run Analysis to refresh live data.`;
-    rawEl.value = JSON.stringify(snap, null, 2);
-    // try to render rolling if available
-    if (snap.rolling && snap.rolling.dates) renderRollingChart(snap.rolling.dates, snap.rolling.annReturns, snap.rolling.vol, snap.rolling.sharpe);
-  } catch(e){ console.warn('Invalid share hash'); }
+function sipFutureValue(pmt, annualRate, years){
+  const months = Math.round(years*12);
+  const i = annualRate/12;
+  if(Math.abs(i) < 1e-12) return { fv: pmt * months, invested: pmt*months, months };
+  const fv = pmt * ((Math.pow(1+i, months) - 1) / i);
+  return { fv, invested: pmt*months, months };
 }
-loadShared();
+function lumpFuture(principal, annualRate, years){ return principal * Math.pow(1+annualRate, years); }
 
-/* --------------------------
- SIP / Lump / Withdrawal UI
----------------------------*/
 document.getElementById('calcSIP').addEventListener('click', ()=>{
   const pmt = parseFloat(document.getElementById('sipAmount').value);
   const years = parseFloat(document.getElementById('sipYears').value);
-  if (!pmt || !years) return alert('Enter SIP and years');
+  if(!pmt || !years) return alert('Enter SIP amount and tenure');
   let expected = parseFloat(document.getElementById('sipExpected').value);
-  if (!expected && lastSnapshot) expected = lastSnapshot.annRetF * 100 || 8;
-  if (!expected) expected = 8;
+  if(!expected && lastSnapshot) expected = lastSnapshot.metrics.annRetF * 100;
+  if(!expected) expected = 8;
   expected = expected / 100;
   const obj = sipFutureValue(pmt, expected, years);
-  const implied = (function(){ let low=-0.9999, high=5; for (let i=0;i<60;i++){ const mid=(low+high)/2; const rate = mid/12; const val = Math.abs(rate) < 1e-12 ? pmt * (years*12) : pmt * ((Math.pow(1+rate, years*12)-1)/rate); if (val > obj.fv) high = mid; else low = mid; } return (low+high)/2; })();
-  const cagr = Math.pow(obj.fv/obj.invested, 1/years)-1;
-  document.getElementById('sipResult').textContent = `SIP: ₹${pmt.toLocaleString()} /month · ${years}y\nFuture Value: ₹${Math.round(obj.fv).toLocaleString()}\nInvested: ₹${obj.invested.toLocaleString()}\nImplied annual: ${(implied*100).toFixed(2)}% · Estimated CAGR: ${(cagr*100).toFixed(2)}%`;
+  const cagr = Math.pow(obj.fv / obj.invested, 1/years) - 1;
+  document.getElementById('sipResult').textContent = `SIP Future Value: ₹${Math.round(obj.fv).toLocaleString()} · Invested: ₹${obj.invested.toLocaleString()} · Implied CAGR: ${(cagr*100).toFixed(2)}%`;
+  // draw SIP vs lump-sum: monthly series
+  const months = obj.months;
+  const sipSeries = []; const lumpSeries = []; const monthLabels = [];
+  let valSip = 0; const invested = obj.invested;
+  const lumpPrincipal = invested; // compare to investing full amount at start
+  let valLump = lumpPrincipal;
+  const monthlyRate = expected / 12;
+  for(let m=1;m<=months;m++){
+    valSip = (valSip + pmt) * (1 + monthlyRate);
+    valLump = valLump * (1 + monthlyRate);
+    sipSeries.push(Math.round(valSip));
+    lumpSeries.push(Math.round(valLump));
+    monthLabels.push(`M${m}`);
+  }
+  drawSipCompare(monthLabels, sipSeries, lumpSeries);
 });
 
 document.getElementById('compareLump').addEventListener('click', ()=>{
   const pmt = parseFloat(document.getElementById('sipAmount').value);
   const years = parseFloat(document.getElementById('sipYears').value);
-  const lump = parseFloat(document.getElementById('lumpAmount').value);
-  if (!pmt || !years) return alert('Enter SIP and years');
+  const lump = parseFloat(document.getElementById('lumpAmount')?.value || 0);
+  if(!pmt || !years) return alert('Enter SIP & years');
   let expected = parseFloat(document.getElementById('sipExpected').value);
-  if (!expected && lastSnapshot) expected = lastSnapshot.annRetF * 100 || 8;
-  if (!expected) expected = 8;
-  expected = expected/100;
-  const sipObj = sipFutureValue(pmt, expected, years);
-  const invested = sipObj.invested;
-  const lumpFV = lump ? lumpFuture(lump, expected, years) : lumpFuture(invested, expected, years);
-  const out = `SIP FV: ₹${Math.round(sipObj.fv).toLocaleString()} (Invested: ₹${invested.toLocaleString()})\nLump FV: ₹${Math.round(lumpFV).toLocaleString()} (Lump: ₹${lump?lump.toLocaleString():invested.toLocaleString()})`;
-  document.getElementById('sipResult').textContent = out;
+  if(!expected && lastSnapshot) expected = lastSnapshot.metrics.annRetF * 100;
+  if(!expected) expected = 8;
+  expected = expected / 100;
+  const obj = sipFutureValue(pmt, expected, years);
+  const invested = obj.invested;
+  const lumpToUse = lump || invested;
+  const lumpFV = lumpFuture(lumpToUse, expected, years);
+  document.getElementById('sipResult').textContent = `SIP FV: ₹${Math.round(obj.fv).toLocaleString()} vs Lump FV: ₹${Math.round(lumpFV).toLocaleString()} (lump ₹${Math.round(lumpToUse).toLocaleString()})`;
 });
 
-document.getElementById('calcSW').addEventListener('click', ()=>{
+/* -------------------------
+  SWP (Systematic Withdrawal Plan)
+---------------------------*/
+document.getElementById('calcSWP').addEventListener('click', ()=>{
   const portfolio = parseFloat(document.getElementById('swPortfolio').value);
   const years = parseFloat(document.getElementById('swYears').value);
-  const exp = parseFloat(document.getElementById('swReturn').value) || (lastSnapshot ? lastSnapshot.annRetF*100 : 6);
-  const inflation = parseFloat(document.getElementById('swInflation').value) || 0;
-  if (!portfolio || !years) return alert('Enter portfolio & years');
-  const r = exp/100; const pay = withdrawalAnn(portfolio, years, r, inflation/100);
-  document.getElementById('sipResult').textContent = `Estimated annual withdrawal: ₹${Math.round(pay).toLocaleString()} (nominal). Real approx: ₹${Math.round(pay*(1-(inflation/100))).toLocaleString()}`;
+  const exp = parseFloat(document.getElementById('swReturn').value) || (lastSnapshot ? lastSnapshot.metrics.annRetF*100 : 6);
+  const inflation = parseFloat(document.getElementById('swInflation')?.value) || 0;
+  if(!portfolio || !years) return alert('Enter portfolio & years');
+  const r = exp/100;
+  const n = years;
+  let payment;
+  if(Math.abs(r - inflation/100) < 1e-12) payment = portfolio / n;
+  else {
+    const realR = r - (inflation/100);
+    payment = (portfolio * realR) / (1 - Math.pow(1 + realR, -n));
+  }
+  document.getElementById('sipResult').textContent = `Estimated annual withdrawal: ₹${Math.round(payment).toLocaleString()} (nominal)`;
 });
 
-/* --------------------------
- End
+/* -------------------------
+  CSV Export
 ---------------------------*/
+document.getElementById('exportCSV').addEventListener('click', ()=>{
+  if(!lastSnapshot) return alert('Run analysis first');
+  const s = lastSnapshot;
+  let csv = 'Metric,Value\\n';
+  csv += `Symbol,${s.symbol}\\n`;
+  csv += `Period,${s.period}\\n`;
+  csv += `Timestamp,${s.timestamp}\\n`;
+  const m = s.metrics;
+  csv += `Annual Return (Fund %),${(m.annRetF*100).toFixed(4)}\\n`;
+  csv += `Annualized SD (%),${(m.annSdF*100).toFixed(4)}\\n`;
+  csv += `Beta,${m.beta}\\n`;
+  csv += `Alpha (%),${(m.alpha*100).toFixed(4)}\\n`;
+  csv += `Sharpe,${m.sharpe}\\n`;
+  csv += `Treynor,${m.treynor}\\n`;
+  csv += `R-squared,${m.reg.r2}\\n`;
+  csv += '\\nRollingDate,RollingReturn(%),RollingVol(%),RollingSharpe\\n';
+  for(let i=0;i<s.rolling.dates.length;i++){
+    csv += `${s.rolling.dates[i]},${(s.rolling.ann[i]*100).toFixed(4)},${(s.rolling.vol[i]*100).toFixed(4)},${s.rolling.sharpe[i].toFixed(4)}\\n`;
+  }
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `${s.symbol || 'report'}_metrics.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+});
+
+/* -------------------------
+  PDF Export (html2canvas + jsPDF)
+---------------------------*/
+document.getElementById('exportPDF').addEventListener('click', async ()=>{
+  if(!lastSnapshot) return alert('Run analysis first');
+  const node = document.querySelector('.wrap');
+  document.getElementById('exportPDF').disabled = true;
+  try{
+    const canvas = await html2canvas(node, { scale: 2 });
+    const img = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'px', format:'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const imgProps = pdf.getImageProperties(img);
+    const imgW = pageW - 40;
+    const imgH = imgProps.height * imgW / imgProps.width;
+    pdf.addImage(img, 'PNG', 20, 20, imgW, imgH);
+    pdf.save(`${lastSnapshot.symbol || 'report'}_report.pdf`);
+  }catch(e){ alert('PDF failed: ' + e.message); console.error(e); }
+  document.getElementById('exportPDF').disabled = false;
+});
+
+/* -------------------------
+  Share (encode snapshot in URL hash)
+---------------------------*/
+document.getElementById('shareBtn').addEventListener('click', ()=>{
+  if(!lastSnapshot) return alert('Run analysis first');
+  const json = JSON.stringify(lastSnapshot);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  const url = location.origin + location.pathname + '#' + b64;
+  navigator.clipboard?.writeText(url).then(()=> alert('Share link copied to clipboard')).catch(()=> prompt('Copy link', url));
+});
+
+function loadFromHash(){
+  if(!location.hash) return;
+  try{
+    const b64 = location.hash.slice(1);
+    const json = decodeURIComponent(escape(atob(b64)));
+    const snap = JSON.parse(json);
+    lastSnapshot = snap;
+    metricsEl.textContent = `Loaded snapshot for ${snap.symbol} (${snap.period}) — Click Run Analysis to refresh live data.`;
+    rawEl.value = JSON.stringify(snap, null, 2);
+    if(snap.rolling && snap.rolling.dates) drawRollingChart(snap.rolling.dates, snap.rolling.ann, snap.rolling.vol, snap.rolling.sharpe);
+    if(snap.fundSeries && snap.idxSeries) drawPriceChart(snap.fundSeries.map(d=>d.date), snap.fundSeries.map(d=>d.close), snap.idxSeries.map(d=>d.close), []);
+  }catch(e){ console.warn('Invalid share hash', e); }
+}
+loadFromHash();
+
+/* -------------------------
+  Reset
+---------------------------*/
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  location.hash = '';
+  selectedSymbol = null;
+  mfInput.value = '';
+  selectedMeta.textContent = 'No symbol selected';
+  metricsEl.textContent = 'Run analysis to compute metrics.';
+  rawEl.value = '';
+  destroyCharts();
+});
+
+/* -------------------------
+  Auto-fit: ensure app stretches full width of container/iframe
+---------------------------*/
+function autoFit(){
+  const wrap = document.getElementById('appWrap');
+  wrap.style.width = '100%';
+  wrap.style.boxSizing = 'border-box';
+}
+autoFit();
+window.addEventListener('resize', autoFit);
+
 </script>
 </body>
 </html>
