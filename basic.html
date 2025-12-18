@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Mutual Fund vs Nifty50 Analyzer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    body {
+        font-family: Arial;
+        max-width: 1100px;
+        margin: auto;
+        padding: 20px;
+        line-height: 1.6;
+    }
+    input, select, button {
+        padding: 10px;
+        margin-top: 5px;
+        font-size: 16px;
+        width: 100%;
+    }
+    button {
+        background: #0066ff;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+    button:hover { background: #0049b3; }
+
+    .card {
+        background: #f7f7f7;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 10px;
+    }
+    pre {
+        background: #222; color: #0f0; padding: 15px;
+        overflow-x: auto;
+    }
+    canvas { background: #fff; margin: 20px 0; }
+</style>
+</head>
+
+<body>
+
+<h1>📈 Mutual Fund Analysis vs Nifty50 (1Y / 3Y / 5Y)</h1>
+
+<div class="card">
+    <label>Mutual Fund Yahoo Finance Symbol  
+      (example: HDFCMF.NS, ICICIPRULI.NS)</label>
+    <input id="mf" placeholder="ICICIPRULI.NS">
+
+    <label>Time Period</label>
+    <select id="period">
+        <option value="1y">1 Year</option>
+        <option value="3y">3 Years</option>
+        <option value="5y">5 Years</option>
+    </select>
+
+    <button onclick="runAnalysis()">Run Analysis</button>
+</div>
+
+<h2>Results</h2>
+<pre id="results">—</pre>
+
+<h2>NAV vs Nifty50 Chart</h2>
+<canvas id="chart" height="120"></canvas>
+
+<script>
+// ===============================================
+// FETCH Yahoo Finance (CORS-friendly CSV API)
+// ===============================================
+async function fetchYahoo(symbol, range) {
+    const url =
+      `https://query1.finance.yahoo.com/v7/finance/download/${symbol}` +
+      `?range=${range}&interval=1d&events=history&includeAdjustedClose=true`;
+
+    const csv = await fetch(url).then(r => r.text());
+    return parseCSV(csv);
+}
+
+function parseCSV(csv) {
+    const rows = csv.trim().split("\n").slice(1);
+    return rows.map(r => {
+        const cols = r.split(",");
+        return {
+            date: cols[0],
+            close: parseFloat(cols[5] || cols[4])
+        };
+    }).filter(x => !isNaN(x.close));
+}
+
+// ===============================================
+// Math Functions
+// ===============================================
+const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+const stdev = arr => {
+    const m = mean(arr);
+    return Math.sqrt(mean(arr.map(x => (x - m)**2)));
+};
+
+function dailyReturns(data) {
+    const out = [];
+    for (let i = 1; i < data.length; i++) {
+        out.push((data[i].close - data[i-1].close) / data[i-1].close);
+    }
+    return out;
+}
+
+// ===============================================
+// Regression (R²), Covariance, Correlation
+// ===============================================
+function covariance(a, b) {
+    const ma = mean(a), mb = mean(b);
+    return mean(a.map((x,i)=> (x-ma)*(b[i]-mb)));
+}
+function correlation(a, b) {
+    return covariance(a,b) / (stdev(a)*stdev(b));
+}
+function rSquared(a, b) {
+    return correlation(a,b) ** 2;
+}
+
+// ===============================================
+// MAIN ANALYSIS
+// ===============================================
+async function runAnalysis() {
+    const mf = document.getElementById("mf").value.trim();
+    const period = document.getElementById("period").value;
+    const output = document.getElementById("results");
+
+    if (!mf) return alert("Enter mutual fund symbol");
+
+    output.textContent = "Fetching latest data...";
+
+    const rangeMap = { "1y": "1y", "3y": "3y", "5y": "5y" };
+    const range = rangeMap[period];
+
+    try {
+        const [mfData, niftyData] = await Promise.all([
+            fetchYahoo(mf, range),
+            fetchYahoo("^NSEI", range)
+        ]);
+
+        // Align lengths
+        const len = Math.min(mfData.length, niftyData.length);
+        const mfSlice = mfData.slice(-len);
+        const niSlice = niftyData.slice(-len);
+
+        const mfRet = dailyReturns(mfSlice);
+        const niRet = dailyReturns(niSlice);
+
+        const n = mfRet.length;
+
+        // Stats
+        const ann = 252;
+        const meanMF = mean(mfRet), meanNI = mean(niRet);
+        const sdMF = stdev(mfRet), sdNI = stdev(niRet);
+
+        const annualReturnMF = meanMF * ann;
+        const annualReturnNI = meanNI * ann;
+        const annualSDMF = sdMF * Math.sqrt(ann);
+
+        const cov = covariance(mfRet, niRet);
+        const beta = cov / (sdNI*sdNI);
+        const alpha = annualReturnMF - beta * annualReturnNI;
+
+        const corr = correlation(mfRet, niRet);
+        const r2 = rSquared(mfRet, niRet);
+
+        const systematicRisk = beta * sdNI;
+        const unsystematicRisk = sdMF - systematicRisk;
+
+        const trackingError = stdev(mfRet.map((x,i)=> x - niRet[i])) * Math.sqrt(ann);
+
+        // Sharpe (risk-free assumed 6% annual)
+        const rf = 0.06;
+        const sharpe = (annualReturnMF - rf) / annualSDMF;
+
+        const treynor = (annualReturnMF - rf) / beta;
+
+        const capmReturn = rf + beta * (annualReturnNI - rf);
+
+        const excessReturn = annualReturnMF - annualReturnNI;
+
+        const downsideRisk = Math.sqrt(
+            mean(mfRet.filter(r => r < 0).map(r => r*r))
+        ) * Math.sqrt(ann);
+
+        output.textContent =
+`============================================
+ MUTUAL FUND ANALYSIS (${period.toUpperCase()})
+============================================
+
+Annual Return (MF):          ${(annualReturnMF*100).toFixed(2)}%
+Annual Return (Nifty50):     ${(annualReturnNI*100).toFixed(2)}%
+
+Standard Deviation:          ${(sdMF*100).toFixed(2)}%
+Annualized Std Dev:          ${(annualSDMF*100).toFixed(2)}%
+
+Beta:                         ${beta.toFixed(3)}
+Alpha:                        ${(alpha*100).toFixed(2)}%
+Correlation:                  ${corr.toFixed(3)}
+R-Squared:                    ${r2.toFixed(3)}
+
+Covariance:                   ${cov.toFixed(6)}
+Systematic Risk:              ${systematicRisk.toFixed(4)}
+Unsystematic Risk:            ${unsystematicRisk.toFixed(4)}
+
+Sharpe Ratio:                 ${sharpe.toFixed(3)}
+Treynor Ratio:                ${treynor.toFixed(3)}
+Tracking Error:               ${(trackingError*100).toFixed(2)}%
+
+CAPM Expected Annual Return:  ${(capmReturn*100).toFixed(2)}%
+Excess Return vs Nifty:       ${(excessReturn*100).toFixed(2)}%
+
+Downside Risk:                ${(downsideRisk*100).toFixed(2)}%
+Return per Unit Risk:         ${(annualReturnMF/annualSDMF).toFixed(3)}
+============================================
+`;
+
+        drawChart(mfSlice, niSlice);
+    } catch (e) {
+        output.textContent = "Error: " + e;
+    }
+}
+
+// ===============================================
+// CHART: NAV vs Nifty50
+// ===============================================
+let chart = null;
+function drawChart(mfData, niData) {
+    const ctx = document.getElementById("chart").getContext("2d");
+
+    const labels = mfData.map(x => x.date);
+    const mfVals = mfData.map(x => x.close);
+    const niVals = niData.map(x => x.close);
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: "Mutual Fund NAV",
+                    data: mfVals,
+                    borderWidth: 2
+                },
+                {
+                    label: "Nifty50",
+                    data: niVals,
+                    borderWidth: 2
+                }
+            ]
+        }
+    });
+}
+</script>
+
+</body>
+</html>
