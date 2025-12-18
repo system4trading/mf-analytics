@@ -74,7 +74,7 @@ canvas{max-height:350px}
 
 <div class="card">
 <h3>🏷️ SEBI Risk-o-meter</h3>
-<img id="riskSvg" src="assets/risk-moderate.svg" width="100%">
+<img id="riskSvg" src="assets/risk-moderate.png" width="100%">
 </div>
 
 <div class="card" id="factsheet">
@@ -199,7 +199,7 @@ function rollingTable(p,cat){
 // ---------------- RISK ----------------
 function updateRisk(v){
  let lvl='moderate'; if(v>0.25)lvl='very-high'; else if(v>0.2)lvl='high';
- riskSvg.src='assets/risk-'+lvl+'.svg';
+ riskSvg.src='assets/risk-'+lvl+'.png';
 }
 
 // ---------------- EXPORT ----------------
