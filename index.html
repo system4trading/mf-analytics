@@ -1,30 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Hybrid MF Analyzer</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="AMFI & Nifty powered mutual fund analytics platform">
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="pdf.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indian Mutual Fund Analytics Platform</title>
+<meta name="description" content="Advanced Indian Mutual Fund analytics with category averages, rolling returns, alpha, beta, sortino, AMFI-style factsheets, SIP, XIRR and Nifty 50 benchmarking.">
+<meta name="keywords" content="Indian Mutual Funds, AMFI Factsheet, SIP Calculator, MF Analytics, Nifty 50, Alpha Beta Sortino">
+<meta name="robots" content="index,follow">
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+:root{--accent:#1d4ed8;--bg:#f8fafc;--card:#ffffff;--text:#0f172a}
+body{margin:0;font-family:Arial;background:var(--bg);color:var(--text)}
+header{background:var(--accent);color:#fff;padding:16px}
+.container{max-width:1200px;margin:auto;padding:16px}
+.card{background:var(--card);padding:16px;margin-bottom:16px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+h3{margin-top:0}
+input,select,textarea{width:100%;padding:8px;margin-bottom:8px}
+button{background:var(--accent);color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer}
+#mfResults div{padding:6px;cursor:pointer}
+#mfResults div:hover{background:#e5e7eb}
+canvas{max-height:350px}
+.table{width:100%;border-collapse:collapse;font-size:14px}
+.table td,.table th{border:1px solid #cbd5e1;padding:6px}
+.small{font-size:12px;color:#475569}
+</style>
 </head>
 <body>
-
 <header>
-  <img src="assets/logo.png" height="40">
-  <h2>Hybrid MF Analyzer</h2>
+<h2>📈 Indian Mutual Fund Analytics Platform</h2>
+<select id="userMode" onchange="switchMode()">
+<option value="investor">Investor</option>
+<option value="advisor">Advisor</option>
+<option value="public">Public Analytics</option>
+</select>
 </header>
 
-<input id="search" placeholder="Search Mutual Fund">
-<div id="results"></div>
+<div class="container">
 
-<canvas id="chart"></canvas>
-<div id="factsheet"></div>
+<div class="card">
+<h3>💼 Advisor Branding</h3>
+<input id="brandName" placeholder="Advisor / Brand Name">
+<input id="brandColor" placeholder="Primary Color (#hex)">
+<button onclick="applyBranding()">Apply Branding</button>
+</div>
 
-<button onclick="exportPDF()">Download AMFI Factsheet</button>
+<div class="card">
+<h3>🔍 Search Mutual Fund Scheme</h3>
+<input id="mfSearch" placeholder="Type scheme name" oninput="searchMF()">
+<div id="mfResults"></div>
+</div>
 
-<script src="app.js"></script>
+<div class="card">
+<h3>📊 MF vs Nifty 50 (NAV Indexed)</h3>
+<canvas id="priceChart"></canvas>
+</div>
+
+<div class="card">
+<h3>📈 Rolling Risk Metrics (1Y window)</h3>
+<canvas id="riskChart"></canvas>
+</div>
+
+<div class="card">
+<h3>📊 Rolling Returns Table</h3>
+<table class="table">
+<tr><th>Period</th><th>Return</th><th>Category Avg</th></tr>
+<tr><td>1 Year</td><td id="r1y">-</td><td id="c1y">-</td></tr>
+<tr><td>3 Years</td><td id="r3y">-</td><td id="c3y">-</td></tr>
+<tr><td>5 Years</td><td id="r5y">-</td><td id="c5y">-</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>🏷️ SEBI Risk-o-meter</h3>
+<img id="riskSvg" src="assets/risk-moderate.svg" width="100%">
+</div>
+
+<div class="card" id="factsheet">
+<h3>📄 Scheme Factsheet (AMFI Style)</h3>
+<table class="table">
+<tr><td>Category</td><td id="fsCat">-</td></tr>
+<tr><td>AUM (₹ Cr)</td><td id="fsAum">-</td></tr>
+<tr><td>Expense Ratio</td><td id="fsExp">-</td></tr>
+<tr><td>Alpha</td><td id="fsAlpha">-</td></tr>
+<tr><td>Beta</td><td id="fsBeta">-</td></tr>
+<tr><td>Sharpe</td><td id="fsSharpe">-</td></tr>
+<tr><td>Sortino</td><td id="fsSortino">-</td></tr>
+</table>
+<p class="small">Mutual Fund investments are subject to market risks. Past performance is not indicative of future returns.</p>
+</div>
+
+<div class="card">
+<button onclick="exportPDF()">Download Factsheet PDF</button>
+<button onclick="shareLink()">Share Analysis</button>
+</div>
+
+<section class="card">
+<h3>📘 Investor Education</h3>
+<h4>What is Alpha, Beta & Sortino?</h4>
+<p>Alpha measures excess return over benchmark. Beta measures market sensitivity. Sortino measures downside risk-adjusted return.</p>
+<h4>Why Rolling Returns Matter?</h4>
+<p>Rolling returns eliminate start-date bias and show consistency of performance across periods.</p>
+</section>
+
+</div>
+
+<script>
+// ---------------- CONFIG ----------------
+const AMFI_BASE="https://raw.githubusercontent.com/YOURNAME/mf-data-cache/main/amfi/";
+const NIFTY_URL="https://raw.githubusercontent.com/YOURNAME/mf-data-cache/main/nifty/nifty50.json";
+const CATEGORY_AVG_URL="https://raw.githubusercontent.com/YOURNAME/mf-data-cache/main/category_avg.json";
+
+let brand={name:"",color:"#1d4ed8"};
+
+// ---------------- BRANDING ----------------
+function applyBranding(){
+ brand.name=brandName.value;
+ brand.color=brandColor.value||brand.color;
+ document.documentElement.style.setProperty('--accent',brand.color);
+ document.title=brand.name?brand.name+" MF Analytics":"Indian MF Analytics";
+}
+
+// ---------------- MODE ----------------
+function switchMode(){document.body.style.opacity=userMode.value==='public'?0.95:1}
+
+// ---------------- DATA ----------------
+let mfMaster=[{schemeCode:"120503",name:"Demo Equity Fund",category:"Equity Large Cap",aum:15000,expense:0.95}];
+let categoryAvg={"Equity Large Cap":{1:0.12,3:0.14,5:0.15}};
+
+// ---------------- SEARCH ----------------
+function searchMF(){
+ mfResults.innerHTML='';
+ const q=mfSearch.value.toLowerCase();
+ mfMaster.filter(m=>m.name.toLowerCase().includes(q)).forEach(m=>{
+  const d=document.createElement('div');d.textContent=m.name;d.onclick=()=>loadMF(m);mfResults.appendChild(d);
+ });
+}
+
+// ---------------- FINANCE UTILS ----------------
+const returns=p=>p.slice(1).map((v,i)=>Math.log(v/p[i]));
+const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+const stdev=a=>Math.sqrt(mean(a.map(x=>(x-mean(a))**2)));
+
+function downsideDev(r){return Math.sqrt(mean(r.filter(x=>x<0).map(x=>x*x)));}
+function sharpe(r){return mean(r)/stdev(r)*Math.sqrt(252);}
+function sortino(r){return mean(r)/downsideDev(r)*Math.sqrt(252);}
+function beta(rf,rb){return mean(rf.map((r,i)=>r*rb[i]))/(stdev(rb)**2);}
+function alpha(rf,rb){return mean(rf)-beta(rf,rb)*mean(rb);}
+
+// ---------------- LOAD & ANALYZE ----------------
+async function loadMF(mf){
+ fsCat.textContent=mf.category;
+ fsAum.textContent=mf.aum;
+ fsExp.textContent=mf.expense+'%';
+
+ const nav=await fetch(AMFI_BASE+`nav_${mf.schemeCode}.json`).then(r=>r.json());
+ const nifty=await fetch(NIFTY_URL).then(r=>r.json());
+
+ const navP=nav.map(x=>x.nav);
+ const nifP=nifty.map(x=>x.close);
+
+ const rM=returns(navP), rN=returns(nifP);
+
+ fsSharpe.textContent=sharpe(rM).toFixed(2);
+ fsSortino.textContent=sortino(rM).toFixed(2);
+ fsBeta.textContent=beta(rM,rN).toFixed(2);
+ fsAlpha.textContent=(alpha(rM,rN)*252*100).toFixed(2)+'%';
+
+ plotCharts(nav,nifty,rM,rN);
+ rollingTable(navP,mf.category);
+ updateRisk(stdev(rM)*Math.sqrt(252));
+}
+
+// ---------------- CHARTS ----------------
+function plotCharts(nav,nifty,rM,rN){
+ new Chart(priceChart,{type:'line',data:{labels:nav.map(x=>x.date),datasets:[{label:'MF NAV',data:nav.map(x=>x.nav)},{label:'Nifty 50',data:nifty.map(x=>x.close)}]}});
+
+ let rollSharpe=[]; let rollBeta=[]; let win=252;
+ for(let i=win;i<rM.length;i++){
+  rollSharpe.push(sharpe(rM.slice(i-win,i)));
+  rollBeta.push(beta(rM.slice(i-win,i),rN.slice(i-win,i)));
+ }
+ new Chart(riskChart,{type:'line',data:{labels:rollSharpe.map((_,i)=>i),datasets:[{label:'Rolling Sharpe',data:rollSharpe},{label:'Rolling Beta',data:rollBeta}]}});
+}
+
+// ---------------- ROLLING TABLE ----------------
+function cagr(p,y){return (p[p.length-1]/p[p.length-1-y*252])**(1/y)-1}
+function rollingTable(p,cat){
+ r1y.textContent=(cagr(p,1)*100).toFixed(2)+'%';
+ r3y.textContent=(cagr(p,3)*100).toFixed(2)+'%';
+ r5y.textContent=(cagr(p,5)*100).toFixed(2)+'%';
+ c1y.textContent=(categoryAvg[cat][1]*100)+'%';
+ c3y.textContent=(categoryAvg[cat][3]*100)+'%';
+ c5y.textContent=(categoryAvg[cat][5]*100)+'%';
+}
+
+// ---------------- RISK ----------------
+function updateRisk(v){
+ let lvl='moderate'; if(v>0.25)lvl='very-high'; else if(v>0.2)lvl='high';
+ riskSvg.src='assets/risk-'+lvl+'.svg';
+}
+
+// ---------------- EXPORT ----------------
+function exportPDF(){html2pdf().from(factsheet).save('factsheet.pdf')}
+function shareLink(){navigator.clipboard.writeText(location.href);alert('Link copied')}
+
+// ---------------- PWA ----------------
+if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js')}
+</script>
 </body>
 </html>
-
