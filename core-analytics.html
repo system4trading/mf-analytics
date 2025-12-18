@@ -1,0 +1,787 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Mutual Fund Analyzer — Full Features</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; max-width:1200px; margin:18px auto; padding:14px; color:#111; }
+    h1 { margin:0 0 10px 0; }
+    .row{ display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+    label{ display:block; font-size:13px; margin-bottom:6px; color:#333; }
+    input, select, button, textarea { padding:10px; font-size:14px; border:1px solid #ddd; border-radius:6px; }
+    button { background:#0b6; color:#fff; border:none; cursor:pointer; }
+    button.secondary { background:#1366ff; }
+    .card{ background:#fbfbff; border:1px solid #eef; padding:14px; border-radius:10px; margin-top:14px }
+    pre{ background:#0b0b0b; color:#9df29d; padding:12px; border-radius:6px; overflow:auto; white-space:pre-wrap; }
+    canvas{ background:#fff; border-radius:8px; padding:8px; margin-top:8px; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .small { font-size:13px; color:#555; }
+    .controls { gap:8px; display:flex; flex-wrap:wrap; }
+    .muted { color:#666; font-size:13px; }
+    a.link { color:#1366ff; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <h1>Mutual Fund Analyzer — Complete</h1>
+
+  <div class="card">
+    <div class="row" style="width:100%">
+      <div style="flex:1; min-width:240px">
+        <label>Mutual Fund (Yahoo symbol or name)</label>
+        <input id="mfInput" placeholder="e.g. HDFCMF.NS or 'HDFC Balanced Advantage'">
+      </div>
+
+      <div style="width:120px">
+        <label>Period</label>
+        <select id="period">
+          <option value="1y">1 Year</option>
+          <option value="3y">3 Years</option>
+          <option value="5y">5 Years</option>
+        </select>
+      </div>
+
+      <div style="width:160px">
+        <label>Rolling window</label>
+        <select id="rollingWindow">
+          <option value="252">1y (252 days)</option>
+          <option value="126">6m (126)</option>
+          <option value="63">3m (63)</option>
+        </select>
+      </div>
+
+      <div style="width:160px">
+        <label>Risk-free rate (annual %)</label>
+        <input id="rf" placeholder="6" value="6" />
+      </div>
+
+      <div style="width:150px">
+        <label>&nbsp;</label>
+        <button id="searchBtn" class="secondary">Search Symbol</button>
+      </div>
+
+      <div style="width:150px">
+        <label>&nbsp;</label>
+        <button id="runBtn">Run Analysis</button>
+      </div>
+    </div>
+
+    <div style="margin-top:10px" class="controls">
+      <div style="min-width:220px">
+        <label>Expense ratio (annual %, optional)</label>
+        <input id="expenseRatio" placeholder="e.g. 1.2" />
+      </div>
+      <div style="min-width:220px">
+        <label>Avg P/E (optional — fetched automatically if available)</label>
+        <input id="avgPE" placeholder="auto / enter value" />
+      </div>
+      <div style="min-width:220px">
+        <label>Avg Dividend Yield % (optional)</label>
+        <input id="avgYield" placeholder="auto / enter value" />
+      </div>
+      <div style="min-width:220px">
+        <label>Data source note</label>
+        <div class="muted">Uses Yahoo Finance for historical prices & summary (if available). You can override PE/Yield manually.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px" class="controls">
+      <button id="exportCSVBtn">Export CSV (metrics + snapshot)</button>
+      <button id="shareBtn" class="secondary">Generate Shareable Link</button>
+      <button id="clearHashBtn">Clear Shared Report</button>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <h3>Key Metrics</h3>
+      <pre id="metrics">Run analysis to see metrics...</pre>
+    </div>
+    <div class="card">
+      <h3>SIP & Withdrawal Tools</h3>
+      <div style="margin-bottom:8px">
+        <label>Monthly SIP amount (INR)</label>
+        <input id="sipAmount" placeholder="e.g. 5000" />
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:8px">
+        <div style="flex:1">
+          <label>SIP tenure (years)</label>
+          <select id="sipYears">
+            <option value="1">1</option>
+            <option value="3" selected>3</option>
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="15">15</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <label>Expected annual return % (optional)</label>
+          <input id="sipExpected" placeholder="uses fund return if blank" />
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; margin-bottom:8px">
+        <button id="calcSIPBtn">Calculate SIP</button>
+        <button id="compareLumpBtn" class="secondary">Compare Lump Sum</button>
+      </div>
+
+      <h4>Systematic Withdrawal Planner</h4>
+      <div style="display:flex; gap:8px; margin-bottom:8px">
+        <div style="flex:1">
+          <label>Portfolio value (INR)</label>
+          <input id="swPortfolio" placeholder="e.g. 1000000" />
+        </div>
+        <div style="flex:1">
+          <label>Years withdrawal</label>
+          <select id="swYears"><option>5</option><option selected>10</option><option>15</option></select>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:8px">
+        <div style="flex:1">
+          <label>Expected annual return % during withdrawal</label>
+          <input id="swReturn" placeholder="e.g. 6" />
+        </div>
+        <div style="flex:1">
+          <label>Inflation % (for real withdrawal)</label>
+          <input id="swInflation" placeholder="e.g. 4" />
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px">
+        <button id="calcSWBtn">Calc Withdrawal Plan</button>
+      </div>
+
+      <pre id="sipResult" style="margin-top:8px">SIP results will appear here...</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Charts</h3>
+    <canvas id="priceChart" height="160"></canvas>
+    <canvas id="rollingChart" height="140"></canvas>
+    <canvas id="drawdownChart" height="120"></canvas>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h3>Raw data & debug</h3>
+    <textarea id="rawData" style="width:100%;height:120px" readonly></textarea>
+  </div>
+
+<script>
+/* -------------------------
+   Utility / Yahoo fetchers
+   ------------------------- */
+async function fetchYahooCSV(symbol, range){
+  const url = `https://query1.finance.yahoo.com/v7/finance/download/${encodeURIComponent(symbol)}?range=${range}&interval=1d&events=history&includeAdjustedClose=true`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Yahoo CSV fetch failed for ${symbol} (${r.status})`);
+  const txt = await r.text();
+  return parseYahooCSV(txt);
+}
+function parseYahooCSV(csv){
+  const rows = csv.trim().split('\\n').slice(1);
+  const out = [];
+  for (const row of rows){
+    const cols = row.split(',');
+    const date = cols[0];
+    const adj = parseFloat(cols[5] || cols[4]);
+    if (!isNaN(adj)) out.push({ date, close: adj });
+  }
+  return out;
+}
+
+// Try fetch summary (PE, dividend yield) from Yahoo summary endpoint
+async function fetchYahooSummary(symbol){
+  // Try quoteSummary first (might fail in some CORS configs). We'll also try the 'search' quick route.
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=summaryDetail,financialData,defaultKeyStatistics`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('summary fetch failed');
+    const j = await r.json();
+    const q = j?.quoteSummary?.result?.[0];
+    const pe = q?.defaultKeyStatistics?.trailingPE || q?.summaryDetail?.trailingPE || null;
+    const dividendYield = q?.summaryDetail?.dividendYield?.raw || q?.financialData?.dividendYield?.raw || null;
+    return { pe: pe || null, dividendYield: dividendYield ? (dividendYield * 100) : null };
+  } catch (e) {
+    // fallback: try search endpoint to get basic fields
+    try {
+      const searchUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(symbol)}`;
+      const r2 = await fetch(searchUrl);
+      const j2 = await r2.json();
+      const best = j2?.quotes?.[0] || null;
+      const pe = best?.trailingPE || null;
+      const div = best?.dividendYield || null;
+      return { pe: pe || null, dividendYield: div ? (div * 100) : null };
+    } catch (e2) {
+      return { pe: null, dividendYield: null };
+    }
+  }
+}
+
+/* -------------------------
+   Statistics helpers
+   ------------------------- */
+const mean = (arr) => arr.reduce((s,x)=>s+x,0)/arr.length;
+const variance = (arr) => { const m = mean(arr); return mean(arr.map(x=> (x-m)*(x-m))); };
+const stdev = (arr) => Math.sqrt(variance(arr));
+function dailyReturns(series){ const out=[]; for (let i=1;i<series.length;i++){ out.push((series[i].close - series[i-1].close)/series[i-1].close); } return out; }
+function covariance(a,b){ const n=Math.min(a.length,b.length); const as=a.slice(a.length-n), bs=b.slice(b.length-n); const ma=mean(as), mb=mean(bs); let s=0; for (let i=0;i<n;i++) s += (as[i]-ma)*(bs[i]-mb); return s/n; }
+function correlation(a,b){ const cov = covariance(a,b); return cov / (stdev(a)*stdev(b)) || 0; }
+function rSquared(x,y){ const reg = regressionRSquared(x,y); return reg.r2; }
+
+// Regression (slope/intercept/R2) regressing y on x
+function regressionRSquared(xArr, yArr){
+  const n = Math.min(xArr.length, yArr.length);
+  const x = xArr.slice(xArr.length-n), y = yArr.slice(yArr.length-n);
+  const xm = mean(x), ym = mean(y);
+  let num=0, den=0;
+  for (let i=0;i<n;i++){ num += (x[i]-xm)*(y[i]-ym); den += (x[i]-xm)*(x[i]-xm); }
+  const slope = den===0 ? 0 : num/den;
+  const intercept = ym - slope*xm;
+  let ssRes=0, ssTot=0;
+  for (let i=0;i<n;i++){ const pred = intercept + slope*x[i]; ssRes += (y[i]-pred)*(y[i]-pred); ssTot += (y[i]-ym)*(y[i]-ym); }
+  const r2 = ssTot===0 ? 0 : Math.max(0, 1 - ssRes/ssTot);
+  return { slope, intercept, r2 };
+}
+
+/* -------------------------
+   Rolling returns (annualized), rolling Sharpe & rolling vol
+   ------------------------- */
+function rollingReturns(series, windowDays){
+  const out = [];
+  for (let i=windowDays; i<series.length; i++){
+    const start = series[i-windowDays].close, end = series[i].close;
+    if (start > 0){
+      const ann = Math.pow(end/start, 252/windowDays) - 1;
+      out.push({ date: series[i].date, value: ann });
+    } else out.push({ date: series[i].date, value: null });
+  }
+  return out;
+}
+function rollingStats(returnsArr, windowDays){
+  const rr = [];
+  for (let i=windowDays; i<returnsArr.length; i++){
+    const slice = returnsArr.slice(i-windowDays, i);
+    const m = mean(slice);
+    const sd = stdev(slice);
+    const annReturn = m * 252;
+    const annVol = sd * Math.sqrt(252);
+    const sharpe = annVol===0 ? 0 : (annReturn - (parseFloat(document.getElementById('rf').value || 6)/100))/annVol;
+    rr.push({ date: returnsArr[i].date || i, annReturn, annVol, sharpe });
+  }
+  return rr;
+}
+
+/* -------------------------
+   Drawdown series & max drawdown
+   ------------------------- */
+function drawdownSeries(series){
+  let peak = -Infinity;
+  const out = [];
+  let maxDD = 0;
+  for (let i=0;i<series.length;i++){
+    const p = series[i].close;
+    if (p > peak) peak = p;
+    const dd = (peak - p) / peak;
+    if (dd > maxDD) maxDD = dd;
+    out.push({ date: series[i].date, dd });
+  }
+  return { series: out, maxDrawdown: maxDD };
+}
+
+/* -------------------------
+   SIP & Lump-sum & Systematic Withdrawal
+   ------------------------- */
+function sipFutureValue(pmt, annualRate, years){
+  const months = Math.round(years*12);
+  const i = annualRate / 12;
+  if (Math.abs(i) < 1e-12) return { fv: pmt * months, invested: pmt*months, months };
+  const fv = pmt * ((Math.pow(1+i, months) - 1) / i);
+  return { fv, invested: pmt*months, months };
+}
+function lumpSumFutureValue(principal, annualRate, years){
+  return principal * Math.pow(1 + annualRate, years);
+}
+function sipImpliedAnnualReturn(pmt, years, fv){
+  const months = Math.round(years*12);
+  let low=-0.9999, high=5;
+  for (let iter=0; iter<80; iter++){
+    const mid=(low+high)/2;
+    const i = mid/12;
+    const val = Math.abs(i) < 1e-12 ? pmt*months : pmt * ((Math.pow(1+i, months)-1)/i);
+    if (val > fv) high = mid; else low = mid;
+  }
+  return (low+high)/2;
+}
+function withdrawalSchedule(portfolio, years, annualReturn, inflation=0){
+  // Simple level withdrawal: compute annuity payment that depletes portfolio over 'years'
+  // Real return = annualReturn - inflation
+  const r = annualReturn/100 - inflation/100;
+  const n = years;
+  if (Math.abs(r) < 1e-12) { return { payment: portfolio / n }; }
+  const payment = (portfolio * r) / (1 - Math.pow(1+r, -n));
+  return { payment };
+}
+
+/* -------------------------
+   CSV export & shareable link helpers
+   ------------------------- */
+function downloadCSV(filename, text){
+  const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function createShareableLink(snapshot){
+  // snapshot: object -> JSON -> base64 -> put into location.hash
+  const json = JSON.stringify(snapshot);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  const url = location.origin + location.pathname + '#' + b64;
+  return url;
+}
+function loadShareFromHash(){
+  if (!location.hash) return null;
+  try {
+    const b64 = location.hash.slice(1);
+    const json = decodeURIComponent(escape(atob(b64)));
+    return JSON.parse(json);
+  } catch (e) { console.warn('Invalid share hash'); return null; }
+}
+
+/* -------------------------
+   Chart helpers
+   ------------------------- */
+let priceChart=null, rollingChart=null, drawdownChart=null;
+function destroyCharts(){ if (priceChart) { priceChart.destroy(); priceChart=null; } if (rollingChart){ rollingChart.destroy(); rollingChart=null; } if (drawdownChart){ drawdownChart.destroy(); drawdownChart=null; } }
+function drawPrice(dates, fundVals, idxVals){
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  if (priceChart) priceChart.destroy();
+  priceChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels: dates, datasets:[
+      { label:'Mutual Fund', data: fundVals, borderWidth:1.5, pointRadius:0 },
+      { label:'Nifty50', data: idxVals, borderWidth:1.5, pointRadius:0 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ x:{ display:true } } }
+  });
+}
+function drawRolling(rollingDates, rollingValues, rollingSharpe, rollingVol){
+  const ctx = document.getElementById('rollingChart').getContext('2d');
+  if (rollingChart) rollingChart.destroy();
+  const datasets = [
+    { label:'Rolling Return (annualized)', data: rollingValues.map(v=>v*100), yAxisID:'y1', borderWidth:1.2, pointRadius:0 },
+    { label:'Rolling Sharpe', data: rollingSharpe.map(v=>v), yAxisID:'y2', borderWidth:1.2, pointRadius:0 },
+    { label:'Rolling Vol (ann %)', data: rollingVol.map(v=>v*100), yAxisID:'y1', borderWidth:1.2, pointRadius:0, borderDash:[4,4] }
+  ];
+  rollingChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels: rollingDates, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        y1:{ type:'linear', position:'left', ticks:{ callback: v => v + '%' } },
+        y2:{ type:'linear', position:'right', ticks:{ callback: v => v.toFixed(2) } }
+      }
+    }
+  });
+}
+function drawDrawdown(dates, dd){
+  const ctx = document.getElementById('drawdownChart').getContext('2d');
+  if (drawdownChart) drawdownChart.destroy();
+  drawdownChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels: dates, datasets:[ { label:'Drawdown (%)', data: dd.map(v=>v*100), borderWidth:1.2, pointRadius:0, backgroundColor:'rgba(255,0,0,0.04)' } ] },
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ ticks:{ callback: v => v + '%' } } } }
+  });
+}
+
+/* -------------------------
+   Symbol search helper
+   ------------------------- */
+const mfMap = {
+  "hdfc balanced advantage": "HDFCBALANCE.NS",
+  "axis bluechip": "AXISBLUECHIP.NS",
+  "sbi bluechip": "SBIBLUECHIP.NS",
+  "parag parikh flexi cap": "PPFAS.NS"
+};
+async function yahooSearch(query){
+  const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}`;
+  try {
+    const r = await fetch(url);
+    const j = await r.json();
+    const q = j?.quotes?.[0];
+    return q ? q.symbol : null;
+  } catch(e) { return null; }
+}
+document.getElementById('searchBtn').addEventListener('click', async ()=>{
+  const v = document.getElementById('mfInput').value.trim();
+  if (!v) return alert('Type fund name or symbol');
+  const q = v.toLowerCase();
+  for (const k in mfMap) if (q.includes(k)) { document.getElementById('mfInput').value = mfMap[k]; return alert(`Found symbol: ${mfMap[k]}`); }
+  const s = await yahooSearch(v);
+  if (s) { document.getElementById('mfInput').value = s; alert(`Found symbol via Yahoo: ${s}`); } else alert('No symbol found.');
+});
+
+/* -------------------------
+   Main: run analysis
+   ------------------------- */
+document.getElementById('runBtn').addEventListener('click', runAnalysis);
+document.getElementById('exportCSVBtn').addEventListener('click', exportCSV);
+document.getElementById('shareBtn').addEventListener('click', shareReport);
+document.getElementById('clearHashBtn').addEventListener('click', ()=>{ location.hash=''; alert('Share hash cleared'); });
+document.getElementById('calcSIPBtn').addEventListener('click', calcSIP);
+document.getElementById('compareLumpBtn').addEventListener('click', compareLump);
+document.getElementById('calcSWBtn').addEventListener('click', calcWithdrawal);
+
+let lastSnapshot = null;
+
+async function runAnalysis(){
+  destroyCharts();
+  const symbolOrName = document.getElementById('mfInput').value.trim();
+  const period = document.getElementById('period').value;
+  const rollingWindow = parseInt(document.getElementById('rollingWindow').value,10);
+  const rf = parseFloat(document.getElementById('rf').value || '6')/100;
+  const expPEinput = document.getElementById('avgPE').value.trim();
+  const expYieldInput = document.getElementById('avgYield').value.trim();
+  const expenseInput = parseFloat(document.getElementById('expenseRatio').value) || null;
+
+  if (!symbolOrName) return alert('Enter symbol or name');
+
+  // If user typed a name, attempt search
+  let symbol = symbolOrName;
+  if (!symbolOrName.includes('.') && !symbolOrName.startsWith('^') && !/^[A-Z0-9]+$/i.test(symbolOrName)) {
+    const s = await yahooSearch(symbolOrName);
+    if (s) symbol = s;
+  }
+
+  const metricsEl = document.getElementById('metrics');
+  metricsEl.textContent = 'Fetching price data...';
+
+  try {
+    const [mfSeries, niSeries] = await Promise.all([
+      fetchYahooCSV(symbol, period),
+      fetchYahooCSV('^NSEI', period)
+    ]);
+
+    if (mfSeries.length < 30) throw new Error('Not enough MF data.');
+    if (niSeries.length < 30) throw new Error('Not enough index data.');
+
+    // Align by date intersection
+    const niMap = new Map(niSeries.map(d => [d.date, d.close]));
+    const common = mfSeries.filter(d => niMap.has(d.date));
+    const alignedIdx = common.map(d => ({ date: d.date, close: niMap.get(d.date) }));
+    if (common.length < 30) throw new Error('Too few overlapping days.');
+
+    const fund = common; // ordered oldest->newest
+    const idx = alignedIdx;
+
+    // returns arrays
+    const fundReturns = dailyReturns(fund);
+    const idxReturns = dailyReturns(idx);
+    const n = Math.min(fundReturns.length, idxReturns.length);
+    const fundR = fundReturns.slice(-n);
+    const idxR = idxReturns.slice(-n);
+
+    // basic stats (daily)
+    const meanFund = mean(fundR), meanIdx = mean(idxR);
+    const sdFund = stdev(fundR), sdIdx = stdev(idxR);
+
+    // annualized
+    const annFactor = 252;
+    const annReturnFund = meanFund * annFactor;
+    const annReturnIdx = meanIdx * annFactor;
+    const annSDFund = sdFund * Math.sqrt(annFactor);
+    const totalVar = variance(fundR) * annFactor;
+
+    // cov, beta, alpha
+    const cov = covariance(fundR, idxR);
+    const beta = cov / (variance(idxR) || 1e-12);
+    const alpha = annReturnFund - beta * annReturnIdx;
+    const corr = correlation(fundR, idxR);
+    const r2 = rSquared(idxR, fundR);
+    const trackingError = stdev(fundR.map((x,i)=> x - idxR[i])) * Math.sqrt(annFactor);
+
+    // systematic & unsystematic
+    const systematicVar = beta*beta * variance(idxR) * annFactor;
+    const unsystematicVar = totalVar - systematicVar;
+
+    // downside risk
+    const negs = fundR.filter(r => r < 0);
+    const downside = negs.length ? Math.sqrt(mean(negs.map(r=> r*r))) * Math.sqrt(annFactor) : 0;
+
+    // max drawdown
+    const ddRes = drawdownSeries(fund);
+    const maxDD = ddRes.maxDrawdown;
+
+    // sharpe, treynor, capm expected
+    const sharpe = (annReturnFund - rf) / (annSDFund || 1e-12);
+    const treynor = (annReturnFund - rf) / (beta || 1e-12);
+    const capmExpected = rf + beta * (annReturnIdx - rf);
+    const excessReturn = annReturnFund - annReturnIdx;
+    const returnPerUnitRisk = annSDFund ? (annReturnFund / annSDFund) : null;
+
+    // rolling returns & rolling stats
+    const rollReturns = rollingReturns(fund, rollingWindow);
+    // For rolling sharpe/vol, create returns series aligned with dates
+    // create returns series with date labels for rollingStats input
+    const returnsWithDate = [];
+    for (let i=1;i<fund.length;i++) returnsWithDate.push({ date: fund[i].date, value: fundR[i-1] });
+    const rollingStatsArr = rollingStats(returnsWithDate, rollingWindow);
+    const rollingDates = rollingStatsArr.map(r=> r.date);
+    const rollingAnnReturns = rollingStatsArr.map(r=> r.annReturn);
+    const rollingVol = rollingStatsArr.map(r=> r.annVol);
+    const rollingSharpe = rollingStatsArr.map(r=> r.sharpe);
+
+    // Average P/E & Dividend Yield (attempt fetch)
+    const summary = await fetchYahooSummary(symbol);
+    let avgPE = expPEinput || (summary.pe ? summary.pe : (document.getElementById('avgPE').value || null));
+    let avgYield = expYieldInput || (summary.dividendYield ? summary.dividendYield : (document.getElementById('avgYield').value || null));
+    avgPE = avgPE ? parseFloat(avgPE) : null;
+    avgYield = avgYield ? parseFloat(avgYield) : null;
+
+    // Prepare metrics snapshot
+    const snapshot = {
+      symbol, period,
+      annReturnFund, annReturnIdx, annSDFund, totalVar,
+      sdFund, sdIdx, cov, beta, alpha, corr, r2, trackingError,
+      systematicVar, unsystematicVar, downside, maxDD,
+      sharpe, treynor, capmExpected, excessReturn, returnPerUnitRisk,
+      avgPE, avgYield, expenseRatio: expenseInput,
+      rollingWindow, rollingDates, rollingAnnReturns, rollingVol, rollingSharpe,
+      timestamp: new Date().toISOString()
+    };
+    lastSnapshot = snapshot;
+
+    // Display metrics in human-friendly form
+    const lines = [];
+    lines.push(`Symbol: ${symbol}`);
+    lines.push(`Period: ${period} (data points: ${fund.length})`);
+    lines.push('─── Performance & risk ───');
+    lines.push(`Annual Return (Fund): ${(annReturnFund*100).toFixed(2)}%`);
+    lines.push(`Annual Return (Nifty50): ${(annReturnIdx*100).toFixed(2)}%`);
+    lines.push(`Standard Deviation (daily): ${(sdFund*100).toFixed(3)}%`);
+    lines.push(`Annualized Std Dev: ${(annSDFund*100).toFixed(2)}%`);
+    lines.push(`Total Variance (ann): ${totalVar.toFixed(8)}`);
+    lines.push(`Return per Unit Risk: ${returnPerUnitRisk!==null?returnPerUnitRisk.toFixed(3):'NA'}`);
+    lines.push('');
+    lines.push('─── Factor stats ───');
+    lines.push(`Beta vs Nifty: ${beta.toFixed(3)}    Alpha (ann): ${(alpha*100).toFixed(2)}%`);
+    lines.push(`Correlation: ${corr.toFixed(3)}    R²: ${r2.toFixed(3)}`);
+    lines.push(`Covariance (daily): ${cov.toFixed(8)}`);
+    lines.push(`Tracking Error (ann): ${(trackingError*100).toFixed(2)}%`);
+    lines.push('');
+    lines.push('─── Risk decomposition ───');
+    lines.push(`Total variance (ann): ${totalVar.toFixed(8)}`);
+    lines.push(`Systematic Var (ann): ${systematicVar.toFixed(8)}`);
+    lines.push(`Unsystematic Var (ann): ${unsystematicVar.toFixed(8)}`);
+    lines.push(`Downside Risk (ann): ${(downside*100).toFixed(2)}%`);
+    lines.push(`Max Drawdown: ${(maxDD*100).toFixed(2)}%`);
+    lines.push('');
+    lines.push('─── Ratios ───');
+    lines.push(`Sharpe Ratio (rf ${(rf*100).toFixed(2)}%): ${isFinite(sharpe)?sharpe.toFixed(3):'NA'}`);
+    lines.push(`Treynor Ratio: ${isFinite(treynor)?treynor.toFixed(3):'NA'}`);
+    lines.push(`CAPM Expected Return: ${(capmExpected*100).toFixed(2)}%`);
+    lines.push(`Excess Return vs Nifty: ${(excessReturn*100).toFixed(2)}%`);
+    lines.push('');
+    lines.push('─── Snapshot info ───');
+    lines.push(`Avg P/E: ${avgPE!==null?avgPE:'N/A'}`);
+    lines.push(`Avg Dividend Yield %: ${avgYield!==null?avgYield:'N/A'}`);
+    if (expenseInput) lines.push(`Expense Ratio (input): ${expenseInput}%`);
+    lines.push(`Timestamp: ${snapshot.timestamp}`);
+
+    metricsEl.textContent = lines.join('\\n');
+
+    // display raw snippet for debugging
+    document.getElementById('rawData').value = JSON.stringify({ fund: fund.slice(-10), idx: idx.slice(-10) }, null, 2);
+
+    // Charts
+    drawPrice(fund.map(d=>d.date), fund.map(d=>d.close), idx.map(d=>d.close));
+    drawRolling(rollingDates, rollingAnnReturns, rollingSharpe, rollingVol);
+    drawDrawdown(ddRes.series.map(d=>d.date), ddRes.series.map(d=>d.dd));
+
+    // enable export & share
+    document.getElementById('exportCSVBtn').disabled = false;
+    document.getElementById('shareBtn').disabled = false;
+
+    // If page loaded with a share hash, do nothing (we want live)
+    return snapshot;
+
+  } catch (err){
+    document.getElementById('metrics').textContent = 'Error: ' + err.message;
+    document.getElementById('rawData').value = '';
+    console.error(err);
+  }
+}
+
+/* -------------------------
+   Export CSV (metrics + rolling snapshots)
+   ------------------------- */
+function exportCSV(){
+  if (!lastSnapshot) return alert('Run analysis first');
+  const s = lastSnapshot;
+  // Basic metrics CSV
+  let csv = 'Metric,Value\\n';
+  csv += `Symbol,${s.symbol}\\n`;
+  csv += `Period,${s.period}\\n`;
+  csv += `Annual Return Fund (%),${(s.annReturnFund*100).toFixed(4)}\\n`;
+  csv += `Annual Return Nifty (%),${(s.annReturnIdx*100).toFixed(4)}\\n`;
+  csv += `Annualized SD (%),${(s.annSDFund*100).toFixed(4)}\\n`;
+  csv += `Beta,${s.beta}\\n`;
+  csv += `Alpha (%),${(s.alpha*100).toFixed(4)}\\n`;
+  csv += `Sharpe,${s.sharpe}\\n`;
+  csv += `Treynor,${s.treynor}\\n`;
+  csv += `Tracking Error (%),${(s.trackingError*100).toFixed(4)}\\n`;
+  csv += `R-squared,${s.r2}\\n`;
+  csv += `Avg PE,${s.avgPE!==null?s.avgPE:'N/A'}\\n`;
+  csv += `Avg Dividend Yield (%),${s.avgYield!==null?s.avgYield:'N/A'}\\n`;
+  csv += `Expense Ratio (%),${s.expenseRatio!==null?s.expenseRatio:'N/A'}\\n`;
+  csv += `Timestamp,${s.timestamp}\\n\\n`;
+
+  // Rolling series
+  csv += 'RollingDate,RollingReturn(%) ,RollingVol(%) ,RollingSharpe\\n';
+  for (let i=0;i<s.rollingDates.length;i++){
+    csv += `${s.rollingDates[i]},${(s.rollingAnnReturns[i]*100).toFixed(4)},${(s.rollingVol[i]*100).toFixed(4)},${s.rollingSharpe[i].toFixed(4)}\\n`;
+  }
+
+  downloadCSV(`${s.symbol || 'report' }_metrics.csv`, csv);
+}
+
+/* -------------------------
+   Shareable report: encode snapshot into URL hash
+   ------------------------- */
+function shareReport(){
+  if (!lastSnapshot) return alert('Run analysis first');
+  const url = createShareableLink(lastSnapshot);
+  navigator.clipboard?.writeText(url).then(()=> {
+    alert('Shareable link copied to clipboard');
+  }).catch(()=> {
+    prompt('Copy this link', url);
+  });
+}
+// on load, check hash
+window.addEventListener('load', async ()=>{
+  const shared = loadShareFromHash();
+  if (shared){
+    // write snapshot to lastSnapshot and display nice view
+    lastSnapshot = shared;
+    // Display minimal metrics and mention it's a shared snapshot
+    document.getElementById('metrics').textContent = `Shared report loaded for ${shared.symbol} (${shared.period}) — Timestamp: ${shared.timestamp}\\nUse 'Run Analysis' to refresh live data.`;
+    // raw area show snapshot
+    document.getElementById('rawData').value = JSON.stringify(shared, null, 2);
+    // try to render rolling charts if available
+    if (shared.rollingDates) drawRolling(shared.rollingDates, shared.rollingAnnReturns, shared.rollingSharpe, shared.rollingVol);
+  }
+});
+
+/* -------------------------
+   SIP functions (UI)
+   ------------------------- */
+function calcSIP(){
+  const pmt = parseFloat(document.getElementById('sipAmount').value);
+  const years = parseFloat(document.getElementById('sipYears').value);
+  if (!pmt || !years) return alert('Enter monthly SIP and years');
+  let expected = parseFloat(document.getElementById('sipExpected').value);
+  if (!expected && lastSnapshot) expected = lastSnapshot.annReturnFund * 100;
+  if (!expected) expected = 8; // default 8%
+  expected = expected / 100;
+  const fvObj = sipFutureValue(pmt, expected, years);
+  const implied = sipImpliedAnnualReturn(pmt, years, fvObj.fv);
+  const cagr = Math.pow(fvObj.fv / fvObj.invested, 1/years) - 1;
+  const out = [];
+  out.push(`Monthly SIP: ₹${pmt.toLocaleString()}`);
+  out.push(`Tenure: ${years} years (${fvObj.months} months)`);
+  out.push(`Assumed annual return: ${(expected*100).toFixed(2)}%`);
+  out.push(`Future Value: ₹${Math.round(fvObj.fv).toLocaleString()}`);
+  out.push(`Total Invested: ₹${fvObj.invested.toLocaleString()}`);
+  out.push(`Implied annual return for this FV: ${(implied*100).toFixed(2)}%`);
+  out.push(`Estimated CAGR on invested amount: ${(cagr*100).toFixed(2)}%`);
+  document.getElementById('sipResult').textContent = out.join('\\n');
+}
+
+function compareLump(){
+  const pmt = parseFloat(document.getElementById('sipAmount').value);
+  const years = parseFloat(document.getElementById('sipYears').value);
+  if (!pmt || !years) return alert('Enter SIP and years');
+  let expected = parseFloat(document.getElementById('sipExpected').value);
+  if (!expected && lastSnapshot) expected = lastSnapshot.annReturnFund * 100;
+  if (!expected) expected = 8;
+  expected = expected / 100;
+  const fvObj = sipFutureValue(pmt, expected, years);
+  const invested = fvObj.invested;
+  // Lump-sum: invest total invested at start for same years
+  const lumpFV = lumpSumFutureValue(invested, expected, years);
+  const out = [];
+  out.push(`SIP FV: ₹${Math.round(fvObj.fv).toLocaleString()} (Invested: ₹${invested.toLocaleString()})`);
+  out.push(`Lump-sum FV (invest ₹${invested.toLocaleString()} today): ₹${Math.round(lumpFV).toLocaleString()}`);
+  out.push(`=> SIP may produce ${(fvObj.fv - lumpFV).toLocaleString()} difference vs lump-sum`);
+  document.getElementById('sipResult').textContent = out.join('\\n');
+}
+
+/* -------------------------
+   Systematic withdrawal planner
+   ------------------------- */
+function calcWithdrawal(){
+  const portfolio = parseFloat(document.getElementById('swPortfolio').value);
+  const years = parseFloat(document.getElementById('swYears').value);
+  const exp = parseFloat(document.getElementById('swReturn').value);
+  const inflation = parseFloat(document.getElementById('swInflation').value) || 0;
+  if (!portfolio || !years) return alert('Enter portfolio and years');
+  const annualReturn = (isNaN(exp) || exp===0) ? (lastSnapshot ? lastSnapshot.annReturnFund*100 : 6) : exp;
+  const plan = withdrawalSchedule(portfolio, years, annualReturn, inflation);
+  const realPayment = plan.payment * (1 - (inflation/100)); // approx
+  const out = [];
+  out.push(`Portfolio: ₹${portfolio.toLocaleString()}`);
+  out.push(`Years: ${years}`);
+  out.push(`Nominal expected return: ${annualReturn}%`);
+  out.push(`Inflation: ${inflation}%`);
+  out.push(`Estimated annual withdrawal (nominal): ₹${Math.round(plan.payment).toLocaleString()}`);
+  out.push(`Estimated annual withdrawal (approx real): ₹${Math.round(realPayment).toLocaleString()}`);
+  document.getElementById('sipResult').textContent = out.join('\\n');
+}
+
+/* -------------------------
+   Helpers (CSV/download/share) (reused here)
+   ------------------------- */
+function downloadCSV(filename, text){
+  const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+function createShareableLink(snapshot){
+  const json = JSON.stringify(snapshot);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  return location.origin + location.pathname + '#' + b64;
+}
+function loadShareFromHash(){
+  if (!location.hash) return null;
+  try {
+    const b64 = location.hash.slice(1);
+    const json = decodeURIComponent(escape(atob(b64)));
+    return JSON.parse(json);
+  } catch (e) { console.warn('Invalid share hash'); return null; }
+}
+
+/* -------------------------
+   On start: check for shared snapshot
+   ------------------------- */
+window.addEventListener('load', ()=>{
+  const shared = loadShareFromHash();
+  if (shared){
+    lastSnapshot = shared;
+    document.getElementById('metrics').textContent = `Loaded shared snapshot for ${shared.symbol} (${shared.period}) — Timestamp ${shared.timestamp}. Run Analysis to refresh live.`;
+    document.getElementById('rawData').value = JSON.stringify(shared, null, 2);
+    if (shared.rollingDates) drawRolling(shared.rollingDates, shared.rollingAnnReturns, shared.rollingSharpe, shared.rollingVol);
+  }
+});
+</script>
+</body>
+</html>
