@@ -93,6 +93,25 @@ input,select{padding:6px;width:100%;margin-bottom:8px}
 </div>
 
 <div class="card">
+<h3>Upload Portfolio CSV</h3>
+<input type="file" id="portfolioFile">
+<div id="portfolioResult"></div>
+</div>
+
+<div class="card">
+<h3>Monte Carlo Simulation</h3>
+<button onclick="runMonteCarlo()">Run Simulation</button>
+<canvas id="mcChart"></canvas>
+</div>
+
+<div class="card">
+<h3>XIRR Calculator</h3>
+<textarea id="cashflows" placeholder="date,amount per line"></textarea>
+<button onclick="calcXIRR()">Calculate XIRR</button>
+<p id="xirrResult"></p>
+</div>
+
+<div class="card">
 <h3>📜 SEBI Disclaimer</h3>
 <p style="font-size:12px">
 Mutual Fund investments are subject to market risks. Past performance is not indicative of future returns. This platform is for educational purposes only and does not constitute investment advice.
@@ -234,6 +253,45 @@ function calcSIP(){
 
 // -------- XIRR (DEMO) --------
 function calcXIRR(){ xirr.textContent='XIRR: 12.4%'; }
+
+// -------- PORTFOLIO UPLOAD ---------
+document.getElementById('portfolioFile').addEventListener('change', e => {
+ const file = e.target.files[0];
+ const reader = new FileReader();
+ reader.onload = () => {
+  const rows = reader.result.split('\n').slice(1);
+  let total = 0;
+  rows.forEach(r => { const v = r.split(','); total += Number(v[2]||0); });
+  document.getElementById('portfolioResult').textContent = 'Total Investment: ₹'+total.toFixed(2);
+ };
+ reader.readAsText(file);
+});
+
+// -------- MONTE CARLO ---------
+function runMonteCarlo(){
+ const years=10, sims=200;
+ let paths=[];
+ for(let s=0;s<sims;s++){
+  let v=1, arr=[];
+  for(let i=0;i<years;i++){
+   v*=1+(Math.random()*0.2-0.05);
+   arr.push(v);
+  }
+  paths.push(arr[years-1]);
+ }
+ const ctx=document.getElementById('mcChart').getContext('2d');
+ new Chart(ctx,{type:'histogram',data:{labels:paths, datasets:[{label:'Ending Value',data:paths}]}});
+}
+
+// -------- XIRR ---------
+function calcXIRR(){
+ const lines=document.getElementById('cashflows').value.trim().split('\n');
+ let flows=lines.map(l=>{const p=l.split(',');return {d:new Date(p[0]),v:Number(p[1])}});
+ function npv(rate){return flows.reduce((a,f)=>a+f.v/Math.pow(1+rate,(f.d-flows[0].d)/31536000000),0)}
+ let r=0.1;
+ for(let i=0;i<100;i++){r-=npv(r)/1000}
+ document.getElementById('xirrResult').textContent='XIRR: '+(r*100).toFixed(2)+'%';
+}
 
 // -------- EXPORT --------
 function exportPDF(){ alert('PDF generated (demo)'); }
