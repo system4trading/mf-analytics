@@ -1,1 +1,258 @@
-User Guide & Tutorials
+User Guide & Tutorials for Mutual Fund Analyzer
+
+
+⭐ INTRODUCTION
+
+This Mutual Fund Analyzer allows you to compare any Indian mutual fund with the Nifty50 benchmark index, using:
+
+1-year
+
+3-year
+
+5-year
+historical data automatically fetched from Yahoo Finance (browser-safe CORS, free, no backend).
+
+It provides easy-to-understand statistical performance metrics for informed investment evaluation.
+
+🎯 WHAT THIS APP CAN DO
+
+This app:
+
+✔ Fetches NAV history automatically
+✔ Fetches Nifty50 index history
+✔ Computes over 20 financial metrics
+
+Including:
+
+Annualized Return
+
+Alpha & Beta
+
+Sharpe Ratio
+
+Treynor Ratio
+
+Standard Deviation
+
+Annualized Volatility
+
+Correlation
+
+Covariance
+
+Systematic vs Unsystematic Risk
+
+Tracking Error
+
+CAPM Expected Return
+
+Excess Return
+
+Downside Risk
+
+Return Per Unit of Risk
+
+R-Squared (Regression)
+
+✔ Plots NAV vs Nifty50 graph using Chart.js
+✔ Supports 1Y, 3Y, 5Y
+✔ Works entirely offline once loaded (except fetching prices)
+✔ Updates automatically once daily
+📌 REQUIREMENTS
+
+Nothing.
+No installation.
+No backend.
+
+
+🚀 HOW TO USE THE APP
+
+Step 1 — Launch the App
+
+Open the published website or index.html locally.
+
+Step 2 — Search for Your Mutual Fund
+
+You now have two options:
+
+Option A — Type Yahoo Finance Symbol directly
+
+Example:
+
+HDFCMF.NS
+
+ICICIPRULI.NS
+
+SBI.NS
+
+Option B — Search by Mutual Fund Scheme Name
+
+You can search:
+
+"Axis Bluechip Fund"
+
+"HDFC Balanced Advantage Fund"
+
+"SBI Magnum Global Fund"
+
+And the app will auto-suggest the best Yahoo symbol.
+
+Step 3 — Select Time-period
+
+Choose:
+
+1 Year
+
+3 Years
+
+5 Years
+
+Step 4 — Click “Run Analysis”
+
+The app will:
+
+✔ Fetch MF & Nifty50 historical data
+✔ Compute all analytics
+✔ Display detailed output
+✔ Show NAV vs Nifty50 chart
+
+📊 INTERPRETING RESULTS
+
+Below is what each metric means.
+
+⭐ Annual Return
+
+How much the fund gained per year on average.
+
+⭐ Volatility / SD
+
+Measures how much the NAV fluctuates.
+
+Higher = more risk.
+
+⭐ Sharpe Ratio
+
+Risk-adjusted return per unit of total risk
+
+Higher = better
+
+⭐ Treynor Ratio
+
+Return per unit of systematic risk (beta)
+
+Useful if fund is well diversified
+
+⭐ Beta
+
+How sensitive the fund is to market (Nifty50)
+
+>1 → more volatile than market
+
+<1 → less volatile
+
+⭐ Alpha
+
+Extra return that fund generated OVER what its beta explains
+
+Positive = outperformer
+Negative = underperformer
+
+⭐ Correlation
+
+Strength of movement with Nifty50.
+
+⭐ R-Squared
+
+How “index-like” the fund is.
+
+⭐ Systematic Risk
+
+Market-related risk.
+
+⭐ Unsystematic Risk
+
+Fund-specific risk (diversifiable).
+
+⭐ Tracking Error
+
+Deviation vs benchmark—lower is better for index funds.
+
+⭐ CAPM Expected Return
+
+Theoretically expected return given market conditions.
+  
+
+🎓 TUTORIALS
+  
+🧩 Tutorial 1 — How to Compare Two Funds
+
+Search MF #1
+
+Note annual return, volatility, Sharpe
+
+Change symbol → MF #2
+
+Compare:
+
+Metric	Better Fund
+Sharpe Ratio	Higher
+Volatility	Lower
+Beta	Depends
+Return	Higher
+Alpha	Higher
+  
+🧩 Tutorial 2 — How to Select a Good Equity Fund
+
+Look for:
+
+Sharpe > 1.0
+
+Alpha > 0
+
+Beta < 1 (lower risk)
+
+Annual return > Nifty50
+
+R² < 0.7 (less index-like)
+
+🧩 Tutorial 3 — How to Identify a High-Risk Fund
+
+Signs:
+
+High volatility
+
+High downside risk
+
+High beta
+
+Low Sharpe
+
+Negative alpha
+
+🧩 Tutorial 4 — When to Use 1Y vs 3Y vs 5Y
+
+1 Year
+
+Short-term trend
+Market noise
+Momentum funds
+
+3 Years
+
+Medium-term
+Fund manager check
+Style consistency
+
+5 Years
+
+Long-term
+Cyclic corrections
+True performance
+
+🧠 User Tips
+
+NAV data updates daily around 6 PM
+
+Use morning session for stable values
+
+Avoid selecting funds with small history (won’t show 5Y)
