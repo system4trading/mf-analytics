@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Mutual Fund Analyzer — Nifty50 Comparison</title>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- html2canvas + jsPDF for PDF export -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<style>
+  :root {
+    --bg-light: #ffffff;
+    --card-light: #f6f8ff;
+    --text-light: #07101a;
+    --muted-light: #54677a;
+    --accent: #1766ff;
+
+    --bg-dark: #07101a;
+    --card-dark: #0e1a26;
+    --text-dark: #e6f1fb;
+    --muted-dark: #98b1c6;
+  }
+  html,body{ height:100%; margin:0; padding:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial; }
+  body { background:var(--bg, var(--bg-light)); color:var(--text, var(--text-light)); }
+  .wrap{ max-width:1200px; margin:12px auto; padding:12px; box-sizing:border-box; }
+  header{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  h1{ margin:0; font-size:20px; }
+  .card{ background:var(--card, var(--card-light)); border-radius:12px; padding:12px; margin:12px 0; box-shadow: 0 8px 24px rgba(2,6,23,0.04); }
+  .row{ display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+  label{ display:block; font-size:13px; color:var(--muted, var(--muted-light)); margin-bottom:6px; }
+  input, select, button, textarea { padding:10px; border-radius:8px; border:1px solid rgba(0,0,0,0.06); background:transparent; color:inherit; font-size:14px; }
+  button{ background:var(--accent); color:white; border:none; cursor:pointer; }
+  button.ghost{ background:transparent; border:1px solid rgba(0,0,0,0.06); color:inherit; }
+  .grow{ flex:1; min-width:220px; }
+  .small{ font-size:13px; color:var(--muted, var(--muted-light)); }
+  canvas{ width:100% !important; border-radius:8px; margin-top:10px; display:block; }
+  pre{ background:rgba(0,0,0,0.03); padding:12px; border-radius:8px; white-space:pre-wrap; color:inherit; }
+  .two{ display:grid; grid-template-columns:1fr 420px; gap:12px; }
+  @media (max-width:980px){ .two{ grid-template-columns:1fr; } .row{ flex-direction:column; align-items:stretch; } }
+
+  /* Autocomplete dropdown */
+  .searchWrapper{ position:relative; }
+  .resultsBox{ position:absolute; left:0; right:0; top:72px; max-height:320px; overflow:auto; background:var(--card, var(--card-light)); border-radius:8px; border:1px solid rgba(0,0,0,0.06); z-index:50; display:none; }
+  .resultItem{ padding:10px; cursor:pointer; border-bottom: 1px solid rgba(0,0,0,0.03); }
+  .resultItem:hover{ background:rgba(0,0,0,0.05); }
+  .meta{ font-size:12px; color:var(--muted, var(--muted-light)); margin-top:6px; }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="appWrap">
+  <header style="align-items:center;">
+    <h1>Mutual Fund Analyzer — Nifty50 Comparison</h1>
+    <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+      <label style="margin:0 4px 0 0">Theme</label>
+      <select id="themeSelect" aria-label="Theme">
+        <option value="auto">Auto</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- Search + controls -->
+  <div class="card">
+    <div class="row">
+      <div class="grow searchWrapper">
+        <label>Mutual Fund (type scheme name or symbol)</label>
+        <input id="mfInput" placeholder="Type scheme name (e.g. HDFC Balanced Advantage) or symbol (HDFCBALADV.NS)">
+        <div id="resultsBox" class="resultsBox" role="listbox"></div>
+        <div id="selectedMeta" class="meta">No symbol selected</div>
+      </div>
+
+      <div style="width:140px">
+        <label>Period</label>
+        <select id="period"><option value="1y">1 Year</option><option value="3y">3 Years</option><option value="5y">5 Years</option></select>
+      </div>
+
+      <div style="width:140px">
+        <label>Rolling window</label>
+        <select id="rollingWindow"><option value="252">1y (252)</option><option value="126">6m</option><option value="63">3m</option></select>
+      </div>
+
+      <div style="width:120px">
+        <label>Risk-free %</label>
+        <input id="rf" value="6" />
+      </div>
+
+      <div style="min-width:170px">
+        <label>&nbsp;</label>
+        <div style="display:flex; gap:8px">
+          <button id="runBtn">Run Analysis</button>
+          <button id="shareBtn" class="ghost">Share</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px;">
+      <div style="flex:1; min-width:240px;">
+        <label>Expense ratio (annual %, optional)</label>
+        <input id="expenseRatio" placeholder="e.g. 1.25">
+      </div>
+      <div style="flex:1; min-width:220px;">
+        <label>Avg P/E (enter if you have it)</label>
+        <input id="avgPE" placeholder="optional">
+      </div>
+      <div style="flex:1; min-width:220px;">
+        <label>Avg Dividend Yield % (optional)</label>
+        <input id="avgYield" placeholder="optional">
+      </div>
+      <div style="width:180px; text-align:right;">
+        <div class="small">Load larger MF database (optional)</div>
+        <input id="dbUrl" placeholder="Paste hosted mf_symbols.json URL" />
+        <button id="loadDbBtn" class="ghost" style="margin-top:6px;">Load DB</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metrics and tools -->
+  <div class="two">
+    <div class="card">
+      <h3>Summary Metrics</h3>
+      <pre id="metrics">No analysis yet.</pre>
+
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button id="exportCSV" class="ghost">Export CSV</button>
+        <button id="exportPDF" class="ghost">Export PDF</button>
+        <button id="resetBtn" class="ghost">Reset</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>SIP / Lumpsum / SWP</h3>
+
+      <label>Monthly SIP (INR)</label>
+      <input id="sipAmount" placeholder="e.g. 5000">
+
+      <label>SIP Tenure (years)</label>
+      <select id="sipYears"><option>1</option><option selected>3</option><option>5</option><option>10</option><option>15</option></select>
+
+      <label>Expected annual return % (optional — uses fund's historic annual return if blank)</label>
+      <input id="sipExpected" placeholder="e.g. 8">
+
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button id="calcSIP">Calculate SIP</button>
+        <button id="compareLump" class="ghost">SIP vs Lump-sum</button>
+      </div>
+
+      <hr style="margin:10px 0">
+
+      <label>SWP - Portfolio Value (INR)</label>
+      <input id="swPortfolio" placeholder="e.g. 1000000">
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input id="swYears" placeholder="Years" style="flex:1">
+        <input id="swReturn" placeholder="Expected annual return % (e.g. 6)" style="flex:1">
+        <input id="swInflation" placeholder="Inflation %" style="flex:1">
+      </div>
+      <div style="margin-top:8px;">
+        <button id="calcSWP">Calc SWP</button>
+      </div>
+
+      <pre id="sipResult" style="margin-top:10px">Results appear here.</pre>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="card">
+    <h3>Charts</h3>
+    <canvas id="priceChart" height="240"></canvas>
+    <canvas id="rollingChart" height="180"></canvas>
+    <canvas id="drawdownChart" height="120"></canvas>
+
+    <h4 style="margin-top:12px;">SIP vs Lumpsum Comparison</h4>
+    <canvas id="sipCompareChart" height="160"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Raw / Debug</h3>
+    <textarea id="raw" style="width:100%;height:140px;border-radius:8px;padding:10px"></textarea>
+  </div>
+</div>
+
+<script>
+/* ----------------------------
+  Built-in MF symbols DB (small demo)
+  - Contains common scheme names + Yahoo symbols (.NS)
+  - You can replace or load a larger hosted JSON via the UI
+----------------------------*/
+let mfDB = [
+  { name: "HDFC Balanced Advantage Fund - Growth", symbol: "HDFCBALADV.NS" },
+  { name: "HDFC Balanced Advantage Fund - Direct Plan", symbol: "HDFCBALADV.DIRECT.NS" },
+  { name: "ICICI Prudential Balanced Advantage Fund", symbol: "ICICIBALADV.NS" },
+  { name: "SBI Bluechip Fund - Regular", symbol: "SBIBLUECHIP.NS" },
+  { name: "Axis Bluechip Fund - Regular Plan", symbol: "AXISBLUECHIP.NS" },
+  { name: "Nippon India Large Cap Fund", symbol: "NIPPLARGECAP.NS" },
+  { name: "Kotak Standard Multicap Fund", symbol: "KOTAKMULTICAP.NS" },
+  { name: "UTI Nifty Index Fund", symbol: "UTINIFTY.NS" },
+  { name: "HDFC Top 100 Fund", symbol: "HDFCTOP100.NS" },
+  { name: "Mirae Asset Large Cap Fund", symbol: "MIRAEASSETLC.NS" },
+  { name: "Axis Midcap Fund", symbol: "AXISMIDCAP.NS" },
+  { name: "ICICI Pru Bluechip Fund", symbol: "ICICIBLUCHIP.NS" },
+  { name: "Aditya Birla Sun Life Frontline Equity", symbol: "ABSLFRONTLINE.NS" },
+  { name: "Kotak Bluechip Fund", symbol: "KOTAKBLUECHIP.NS" },
+  { name: "DSP Equity Fund", symbol: "DSPEQUITY.NS" }
+];
+// You can host a larger mf_symbols.json and load it using the UI (Load DB button)
+
+/* ----------------------------
+  Utility functions
+----------------------------*/
+const resultsBox = document.getElementById('resultsBox');
+const mfInput = document.getElementById('mfInput');
+const selectedMeta = document.getElementById('selectedMeta');
+const runBtn = document.getElementById('runBtn');
+const rawEl = document.getElementById('raw');
+const metricsEl = document.getElementById('metrics');
+
+let selectedSymbol = null;
+let lastSnapshot = null;
+
+/* Theme support */
+const themeSelect = document.getElementById('themeSelect');
+themeSelect.addEventListener('change', ()=>applyTheme(themeSelect.value));
+function applyTheme(mode){
+  const root = document.documentElement;
+  if(mode === 'auto'){ root.style.removeProperty('--bg'); root.style.removeProperty('--card'); root.style.removeProperty('--text'); root.style.removeProperty('--muted'); }
+  else if(mode === 'light'){
+    root.style.setProperty('--bg', '#ffffff'); root.style.setProperty('--card', '#f6f8ff'); root.style.setProperty('--text','#07101a'); root.style.setProperty('--muted','#54677a');
+  } else {
+    root.style.setProperty('--bg', '#07101a'); root.style.setProperty('--card', '#0e1a26'); root.style.setProperty('--text','#e6f1fb'); root.style.setProperty('--muted','#98b1c6');
+  }
+}
+applyTheme('auto');
+
+/* ----------------------------
+  Fuzzy search on local DB (fast, no CORS)
+----------------------------*/
+function fuzzySearchLocal(query){
+  const q = query.trim().toLowerCase();
+  if(!q) return [];
+  // simple scoring: name match index, symbol startsWith, includes
+  const scored = mfDB.map(item => {
+    const name = (item.name || '').toLowerCase();
+    const sym = (item.symbol || '').toLowerCase();
+    let score = 100;
+    if(sym.startsWith(q)) score -= 50;
+    if(name.includes(q)) score -= 10;
+    if(sym.includes(q)) score -= 15;
+    if(name.startsWith(q)) score -= 30;
+    // shorter better
+    score += name.length / 100;
+    return { item, score };
+  });
+  scored.sort((a,b)=>a.score - b.score);
+  return scored.slice(0, 30).map(s=>s.item);
+}
+
+mfInput.addEventListener('input', async (e) => {
+  const q = e.target.value.trim();
+  if(!q){ resultsBox.style.display = 'none'; return; }
+  // search local DB first
+  const results = fuzzySearchLocal(q);
+  if(results && results.length){
+    populateResults(results);
+    return;
+  }
+  // if not found locally and URL supplied to load external DB, try that (handled elsewhere)
+  resultsBox.style.display='none';
+});
+
+function populateResults(items){
+  resultsBox.innerHTML = '';
+  if(!items || items.length === 0){ resultsBox.style.display='none'; return; }
+  for(const it of items){
+    const div = document.createElement('div');
+    div.className = 'resultItem';
+    div.innerHTML = `<strong>${it.name}</strong><div class="small">${it.symbol}</div>`;
+    div.onclick = ()=>{
+      selectedSymbol = it.symbol;
+      mfInput.value = it.name;
+      selectedMeta.textContent = `Selected: ${it.symbol}`;
+      resultsBox.style.display = 'none';
+    };
+    resultsBox.appendChild(div);
+  }
+  resultsBox.style.display = 'block';
+}
+document.addEventListener('click', (e) => {
+  if(!resultsBox.contains(e.target) && e.target !== mfInput) resultsBox.style.display = 'none';
+});
+
+/* Optionally load a larger DB from URL (host mf_symbols.json) */
+document.getElementById('loadDbBtn').addEventListener('click', async ()=>{
+  const url = document.getElementById('dbUrl').value.trim();
+  if(!url) return alert('Paste the hosted mf_symbols.json URL first');
+  try{
+    const r = await fetch(url);
+    if(!r.ok) throw new Error('Failed to fetch DB');
+    const j = await r.json();
+    if(Array.isArray(j) && j.length>0){ mfDB = j; alert(`Loaded ${j.length} symbols`); } else alert('Invalid DB format (expecting JSON array)');
+  } catch(err){
+    alert('Load DB failed: ' + (err.message || err));
+  }
+});
+
+/* ----------------------------
+  Yahoo history CSV fetch (period1/period2)
+  - returns array [{date, close}] oldest -> newest
+----------------------------*/
+function toUnix(dt){ return Math.floor(dt.getTime()/1000); }
+async function fetchHistory(symbol, range){
+  const now = new Date();
+  let from = new Date(now);
+  if(range === '1y') from.setFullYear(now.getFullYear()-1);
+  else if(range === '3y') from.setFullYear(now.getFullYear()-3);
+  else from.setFullYear(now.getFullYear()-5);
+  const period1 = toUnix(new Date(from.getFullYear(), from.getMonth(), from.getDate()));
+  const period2 = toUnix(new Date(now.getFullYear(), now.getMonth(), now.getDate()+1));
+  const url = `https://query1.finance.yahoo.com/v7/finance/download/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d&events=history&includeAdjustedClose=true`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error(`History fetch failed (${r.status}) for ${symbol}`);
+  const txt = await r.text();
+  return parseCSV(txt);
+}
+function parseCSV(csv){
+  const rows = csv.trim().split('\\n').slice(1);
+  const out = [];
+  for(const row of rows){
+    const cols = row.split(',');
+    const date = cols[0];
+    const adj = parseFloat(cols[5] || cols[4]);
+    if(!isNaN(adj)) out.push({ date, close: adj });
+  }
+  return out;
+}
+
+/* ----------------------------
+  Financial math helpers
+----------------------------*/
+const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+const variance = arr => { const m = mean(arr); return mean(arr.map(x=> (x-m)*(x-m))); };
+const stdev = arr => Math.sqrt(variance(arr));
+function dailyReturns(series){ const out=[]; for(let i=1;i<series.length;i++) out.push((series[i].close - series[i-1].close)/series[i-1].close); return out; }
+function covariance(a,b){ const n=Math.min(a.length,b.length); const as=a.slice(a.length-n), bs=b.slice(b.length-n); const ma=mean(as), mb=mean(bs); let s=0; for(let i=0;i<n;i++) s += (as[i]-ma)*(bs[i]-mb); return s/n; }
+function correlation(a,b){ const den = stdev(a)*stdev(b); return den===0?0:covariance(a,b)/den; }
+function regressionRSquared(x,y){ const n=Math.min(x.length,y.length); const xs=x.slice(x.length-n), ys=y.slice(y.length-n); const xm=mean(xs), ym=mean(ys); let num=0, den=0; for(let i=0;i<n;i++){ num += (xs[i]-xm)*(ys[i]-ym); den += (xs[i]-xm)*(xs[i]-xm); } const slope = den===0?0:num/den; const intercept = ym - slope*xm; let ssRes=0, ssTot=0; for(let i=0;i<n;i++){ const pred = intercept + slope*xs[i]; ssRes += (ys[i]-pred)*(ys[i]-pred); ssTot += (ys[i]-ym)*(ys[i]-ym); } const r2 = ssTot===0?0:Math.max(0,1 - ssRes/ssTot); return { slope, intercept, r2 }; }
+
+/* Rolling functions */
+function rollingReturns(series, windowDays){
+  const out=[];
+  for(let i=windowDays;i<series.length;i++){
+    const start = series[i-windowDays].close; const end = series[i].close;
+    if(start>0) out.push({ date: series[i].date, value: Math.pow(end/start, 252/windowDays) - 1 });
+    else out.push({ date: series[i].date, value: null });
+  }
+  return out;
+}
+function computeRollingStats(returnsWithDate, windowDays, rfAnnual){
+  const out=[];
+  for(let i=windowDays;i<returnsWithDate.length;i++){
+    const slice = returnsWithDate.slice(i-windowDays, i).map(x=>x.value);
+    const m = mean(slice); const sd = stdev(slice);
+    const annRet = m * 252; const annVol = sd * Math.sqrt(252); const sharpe = annVol===0?0:(annRet - rfAnnual)/annVol;
+    out.push({ date: returnsWithDate[i].date, annRet, annVol, sharpe });
+  }
+  return out;
+}
+function drawdownSeries(series){
+  let peak = -Infinity; const out=[]; let maxDD = 0;
+  for(const p of series){ if(p.close > peak) peak = p.close; const dd = (peak - p.close)/peak; if(dd > maxDD) maxDD = dd; out.push({ date: p.date, dd }); }
+  return { series: out, maxDrawdown: maxDD };
+}
+
+/* ----------------------------
+  Charts
+----------------------------*/
+let priceChart=null, rollingChart=null, drawdownChart=null, sipCompareChart=null;
+function destroyCharts(){ if(priceChart) priceChart.destroy(); if(rollingChart) rollingChart.destroy(); if(drawdownChart) drawdownChart.destroy(); if(sipCompareChart) sipCompareChart.destroy(); }
+
+function drawPriceChart(dates, fundVals, idxVals, rollingSharpeSeries){
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  if(priceChart) priceChart.destroy();
+  priceChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels: dates, datasets:[
+      { label: 'Fund NAV', data: fundVals, borderWidth:1.6, pointRadius:0, tension:0.15 },
+      { label: 'Nifty50', data: idxVals, borderWidth:1.4, pointRadius:0, tension:0.15, borderColor:'#888' },
+      { label: 'Rolling Sharpe x100', data: rollingSharpeSeries.map(v=> v===null?null:v*100), borderWidth:1, pointRadius:0, borderDash:[6,4], yAxisID:'y2', borderColor:'#ff6600' }
+    ]},
+    options:{
+      interaction:{ mode:'index', intersect:false },
+      responsive:true, maintainAspectRatio:false,
+      scales:{ y:{ position:'left' }, y2:{ position:'right', grid:{ display:false }, ticks:{ callback: v => v.toFixed(1) } } },
+      plugins:{ legend:{ position:'top' } }
+    }
+  });
+}
+
+function drawRollingChart(dates, annReturns, annVol, sharpeSeries){
+  const ctx = document.getElementById('rollingChart').getContext('2d');
+  if(rollingChart) rollingChart.destroy();
+  rollingChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels: dates, datasets:[
+      { label:'Rolling Return (ann %)', data: annReturns.map(v=>v*100), borderWidth:1.2, pointRadius:0 },
+      { label:'Rolling Vol (ann %)', data: annVol.map(v=>v*100), borderWidth:1.2, pointRadius:0, borderDash:[4,4] },
+      { label:'Rolling Sharpe', data: sharpeSeries, borderWidth:1.2, pointRadius:0, borderColor:'#ff6600', yAxisID:'y2' }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ position:'left', ticks:{ callback: v => v + '%' } }, y2:{ position:'right' } } }
+  });
+}
+
+function drawDrawdownChart(dates, ddSeries){
+  const ctx = document.getElementById('drawdownChart').getContext('2d');
+  if(drawdownChart) drawdownChart.destroy();
+  drawdownChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels: dates, datasets:[ { label:'Drawdown (%)', data: ddSeries.map(v=>v*100), borderWidth:1.2, pointRadius:0, backgroundColor:'rgba(255,0,0,0.05)' } ]},
+    options:{ responsive:true, maintainAspectRatio:false }
+  });
+}
+
+function drawSipCompare(monthLabels, sipSeries, lumpSeries){
+  const ctx = document.getElementById('sipCompareChart').getContext('2d');
+  if(sipCompareChart) sipCompareChart.destroy();
+  sipCompareChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels: monthLabels, datasets:[
+      { label:'SIP Value', data: sipSeries, borderWidth:1.2, pointRadius:0 },
+      { label:'Lump Sum Value', data: lumpSeries, borderWidth:1.2, pointRadius:0, borderDash:[4,4] }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false }
+  });
+}
+
+/* ----------------------------
+  Main analysis function
+----------------------------*/
+document.getElementById('runBtn').addEventListener('click', runAnalysis);
+
+async function runAnalysis(){
+  if(!selectedSymbol) return alert('Please pick a symbol from the dropdown (click a result).');
+  const symbol = selectedSymbol;
+  const period = document.getElementById('period').value;
+  const rf = (parseFloat(document.getElementById('rf').value) || 6)/100;
+  const rollingWindow = parseInt(document.getElementById('rollingWindow').value,10);
+
+  metricsEl.textContent = 'Fetching history...';
+  rawEl.value = '';
+
+  try{
+    destroyCharts();
+    const [fundSeries, idxSeries] = await Promise.all([ fetchHistory(symbol, period), fetchHistory('^NSEI', period) ]);
+
+    // align on dates
+    const idxMap = new Map(idxSeries.map(d=>[d.date,d.close]));
+    const fundCommon = fundSeries.filter(d=> idxMap.has(d.date));
+    const idxAligned = fundCommon.map(d=> ({ date: d.date, close: idxMap.get(d.date) }) );
+
+    if(fundCommon.length < 30) throw new Error('Insufficient overlapping data between fund and index.');
+
+    const fund = fundCommon;
+    const idx = idxAligned;
+
+    const fundR = dailyReturns(fund);
+    const idxR = dailyReturns(idx);
+    const n = Math.min(fundR.length, idxR.length);
+    const fR = fundR.slice(-n);
+    const iR = idxR.slice(-n);
+
+    const annFactor = 252;
+    const meanF = mean(fR), meanI = mean(iR);
+    const sdF = stdev(fR), sdI = stdev(iR);
+    const annRetF = meanF * annFactor;
+    const annRetI = meanI * annFactor;
+    const annSdF = sdF * Math.sqrt(annFactor);
+    const totVar = variance(fR) * annFactor;
+    const cov = covariance(fR, iR);
+    const beta = cov / (variance(iR) || 1e-12);
+    const alpha = annRetF - beta * annRetI;
+    const corr = correlation(fR, iR);
+    const reg = regressionRSquared(iR, fR);
+    const trackErr = stdev(fR.map((v,i)=> v - iR[i])) * Math.sqrt(annFactor);
+    const sysVar = beta*beta * variance(iR) * annFactor;
+    const unsysVar = totVar - sysVar;
+    const negatives = fR.filter(r=> r < 0);
+    const downside = negatives.length ? Math.sqrt(mean(negatives.map(x=>x*x))) * Math.sqrt(annFactor) : 0;
+    const dd = drawdownSeries(fund);
+    const maxDD = dd.maxDrawdown;
+    const sharpe = (annRetF - rf) / (annSdF || 1e-12);
+    const treynor = (annRetF - rf) / (beta || 1e-12);
+    const capmExp = rf + beta * (annRetI - rf);
+    const excess = annRetF - annRetI;
+    const retPerUnitRisk = annSdF ? (annRetF / annSdF) : null;
+
+    // rolling stats
+    const returnsWithDate = [];
+    for(let i=1;i<fund.length;i++) returnsWithDate.push({ date: fund[i].date, value: fundR[i-1] });
+    const rollingStats = computeRollingStats(returnsWithDate, rollingWindow, rf);
+    const rollingDates = rollingStats.map(r=>r.date);
+    const rollingAnn = rollingStats.map(r=>r.annRet);
+    const rollingVol = rollingStats.map(r=>r.annVol);
+    const rollingSharpe = rollingStats.map(r=>r.sharpe);
+
+    // prepare metrics text
+    const lines = [];
+    lines.push(`Symbol: ${symbol}`);
+    lines.push(`Period: ${period} (points: ${fund.length})`);
+    lines.push('--- Performance ---');
+    lines.push(`Annual Return (Fund): ${(annRetF*100).toFixed(2)}%`);
+    lines.push(`Annual Return (Nifty): ${(annRetI*100).toFixed(2)}%`);
+    lines.push(`Std Dev (daily): ${(sdF*100).toFixed(3)}%`);
+    lines.push(`Annualized SD: ${(annSdF*100).toFixed(2)}%`);
+    lines.push(`Total Variance (ann): ${totVar.toFixed(8)}`);
+    lines.push(`Return / Unit Risk: ${retPerUnitRisk!==null?retPerUnitRisk.toFixed(3):'N/A'}`);
+    lines.push('');
+    lines.push('--- Factor Stats ---');
+    lines.push(`Beta: ${beta.toFixed(3)}   Alpha (ann): ${(alpha*100).toFixed(2)}%`);
+    lines.push(`Correlation: ${corr.toFixed(3)}   R²: ${reg.r2.toFixed(3)}`);
+    lines.push(`Covariance (daily): ${cov.toFixed(8)}`);
+    lines.push(`Tracking Error (ann): ${(trackErr*100).toFixed(2)}%`);
+    lines.push('');
+    lines.push('--- Risk Decomp ---');
+    lines.push(`Systematic Var (ann): ${sysVar.toFixed(8)}`);
+    lines.push(`Unsystematic Var (ann): ${unsysVar.toFixed(8)}`);
+    lines.push(`Downside Risk (ann): ${(downside*100).toFixed(2)}%`);
+    lines.push(`Max Drawdown: ${(maxDD*100).toFixed(2)}%`);
+    lines.push('');
+    lines.push('--- Ratios & Expected ---');
+    lines.push(`Sharpe (rf ${(rf*100).toFixed(2)}%): ${isFinite(sharpe)?sharpe.toFixed(3):'NA'}`);
+    lines.push(`Treynor: ${isFinite(treynor)?treynor.toFixed(3):'NA'}`);
+    lines.push(`CAPM Expected Return: ${(capmExp*100).toFixed(2)}%`);
+    lines.push(`Excess Return vs Nifty: ${(excess*100).toFixed(2)}%`);
+    lines.push('');
+    lines.push(`Timestamp: ${new Date().toLocaleString()}`);
+
+    metricsEl.textContent = lines.join('\\n');
+
+    rawEl.value = JSON.stringify({ fund: fund.slice(-8), idx: idx.slice(-8), snapshot: { annRetF, annSdF, beta, alpha } }, null, 2);
+
+    // build rollingSharpeSeries aligned with fund dates (pad with nulls)
+    const rollingSharpeSeries = fund.map(d=>{
+      const idx = rollingDates.indexOf(d.date);
+      return idx >= 0 ? rollingSharpe[idx] : null;
+    });
+
+    drawPriceChart(fund.map(d=>d.date), fund.map(d=>d.close), idx.map(d=>d.close), rollingSharpeSeries);
+    drawRollingChart(rollingDates, rollingAnn, rollingVol, rollingSharpe);
+    drawDrawdownChart(dd.series.map(d=>d.date), dd.series.map(d=>d.dd));
+
+    // snapshot for export/share
+    lastSnapshot = {
+      symbol, period, timestamp: new Date().toISOString(),
+      metrics: { annRetF, annRetI, annSdF, sdF, totVar, cov, beta, alpha, corr, reg, trackErr, sysVar, unsysVar, downside, maxDD, sharpe, treynor, capmExp, excess, retPerUnitRisk },
+      rolling: { window: rollingWindow, dates: rollingDates, ann: rollingAnn, vol: rollingVol, sharpe: rollingSharpe },
+      fundSeries: fund, idxSeries: idx
+    };
+
+    // enable share button
+    document.getElementById('shareBtn').disabled = false;
+
+  }catch(err){
+    console.error(err);
+    metricsEl.textContent = 'Error: ' + (err.message || err);
+    rawEl.value = err.stack || '';
+  }
+}
+
+/* ----------------------------
+  SIP / Lumpsum / SWP functions
+----------------------------*/
+function sipFutureValue(pmt, annualRate, years){
+  const months = Math.round(years*12);
+  const i = annualRate/12;
+  if(Math.abs(i) < 1e-12) return { fv: pmt*months, invested: pmt*months, months };
+  const fv = pmt * ((Math.pow(1+i, months) - 1) / i);
+  return { fv, invested: pmt*months, months };
+}
+function lumpFuture(principal, annualRate, years){ return principal * Math.pow(1+annualRate, years); }
+
+document.getElementById('calcSIP').addEventListener('click', ()=>{
+  const pmt = parseFloat(document.getElementById('sipAmount').value);
+  const years = parseFloat(document.getElementById('sipYears').value);
+  if(!pmt || !years) return alert('Enter SIP amount & tenure');
+  let expected = parseFloat(document.getElementById('sipExpected').value);
+  if(!expected && lastSnapshot) expected = lastSnapshot.metrics.annRetF * 100;
+  if(!expected) expected = 8;
+  expected = expected/100;
+  const obj = sipFutureValue(pmt, expected, years);
+  const cagr = Math.pow(obj.fv / obj.invested, 1/years) - 1;
+  document.getElementById('sipResult').textContent = `SIP FV: ₹${Math.round(obj.fv).toLocaleString()} · Invested: ₹${obj.invested.toLocaleString()} · Implied CAGR: ${(cagr*100).toFixed(2)}%`;
+
+  // draw SIP vs lumpsum
+  const months = obj.months;
+  const sipSeries = []; const lumpSeries = []; const labels = [];
+  let valSip = 0; let valLump = obj.invested;
+  const monthlyRate = expected / 12;
+  for(let m=1;m<=months;m++){
+    valSip = (valSip + pmt) * (1 + monthlyRate);
+    valLump = valLump * (1 + monthlyRate);
+    sipSeries.push(Math.round(valSip));
+    lumpSeries.push(Math.round(valLump));
+    labels.push(`M${m}`);
+  }
+  drawSipCompare(labels, sipSeries, lumpSeries);
+});
+
+document.getElementById('compareLump').addEventListener('click', ()=>{
+  const pmt = parseFloat(document.getElementById('sipAmount').value);
+  const years = parseFloat(document.getElementById('sipYears').value);
+  const lump = parseFloat(document.getElementById('lumpAmount')?.value || 0);
+  if(!pmt || !years) return alert('Enter SIP & years');
+  let expected = parseFloat(document.getElementById('sipExpected').value);
+  if(!expected && lastSnapshot) expected = lastSnapshot.metrics.annRetF * 100;
+  if(!expected) expected = 8;
+  expected = expected/100;
+  const obj = sipFutureValue(pmt, expected, years);
+  const invested = obj.invested;
+  const lumpToUse = lump || invested;
+  const lumpFV = lumpFuture(lumpToUse, expected, years);
+  document.getElementById('sipResult').textContent = `SIP FV: ₹${Math.round(obj.fv).toLocaleString()} vs Lump FV: ₹${Math.round(lumpFV).toLocaleString()}`;
+});
+
+document.getElementById('calcSWP').addEventListener('click', ()=>{
+  const portfolio = parseFloat(document.getElementById('swPortfolio').value);
+  const years = parseFloat(document.getElementById('swYears').value);
+  const exp = parseFloat(document.getElementById('swReturn').value) || (lastSnapshot ? lastSnapshot.metrics.annRetF*100 : 6);
+  const inflation = parseFloat(document.getElementById('swInflation').value) || 0;
+  if(!portfolio || !years) return alert('Enter portfolio & years');
+  const r = exp/100; const n = years;
+  let payment;
+  if(Math.abs(r - inflation/100) < 1e-12) payment = portfolio / n;
+  else {
+    const realR = r - inflation/100;
+    payment = (portfolio * realR) / (1 - Math.pow(1+realR, -n));
+  }
+  document.getElementById('sipResult').textContent = `Estimated annual withdrawal: ₹${Math.round(payment).toLocaleString()} (nominal)`;
+});
+
+/* ----------------------------
+  Export CSV
+----------------------------*/
+document.getElementById('exportCSV').addEventListener('click', ()=>{
+  if(!lastSnapshot) return alert('Run analysis first');
+  const s = lastSnapshot;
+  let csv = 'Metric,Value\\n';
+  csv += `Symbol,${s.symbol}\\n`;
+  csv += `Period,${s.period}\\n`;
+  csv += `Timestamp,${s.timestamp}\\n`;
+  const m = s.metrics;
+  csv += `Annual Return Fund (%),${(m.annRetF*100).toFixed(4)}\\n`;
+  csv += `Annualized SD (%),${(m.annSdF*100).toFixed(4)}\\n`;
+  csv += `Beta,${m.beta}\\n`;
+  csv += `Alpha (%),${(m.alpha*100).toFixed(4)}\\n`;
+  csv += `Sharpe,${m.sharpe}\\n`;
+  csv += `Treynor,${m.treynor}\\n`;
+  csv += `R-squared,${m.reg.r2}\\n`;
+  csv += '\\nRollingDate,RollingReturn(%),RollingVol(%),RollingSharpe\\n';
+  for(let i=0;i<s.rolling.dates.length;i++){
+    csv += `${s.rolling.dates[i]},${(s.rolling.ann[i]*100).toFixed(4)},${(s.rolling.vol[i]*100).toFixed(4)},${s.rolling.sharpe[i].toFixed(4)}\\n`;
+  }
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `${s.symbol || 'report'}_metrics.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+});
+
+/* ----------------------------
+  Export PDF
+----------------------------*/
+document.getElementById('exportPDF').addEventListener('click', async ()=>{
+  if(!lastSnapshot) return alert('Run analysis first');
+  const node = document.querySelector('.wrap');
+  try{
+    const canvas = await html2canvas(node, { scale: 2 });
+    const img = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'px', format:'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const imgProps = pdf.getImageProperties(img);
+    const imgW = pageW - 40;
+    const imgH = (imgProps.height * imgW) / imgProps.width;
+    pdf.addImage(img, 'PNG', 20, 20, imgW, imgH);
+    pdf.save(`${lastSnapshot.symbol || 'report'}_report.pdf`);
+  }catch(e){ alert('PDF export failed: ' + e.message); console.error(e); }
+});
+
+/* ----------------------------
+  Share snapshot (encode in URL hash)
+----------------------------*/
+document.getElementById('shareBtn').addEventListener('click', ()=>{
+  if(!lastSnapshot) return alert('Run analysis first');
+  const json = JSON.stringify(lastSnapshot);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  const url = location.origin + location.pathname + '#' + b64;
+  navigator.clipboard?.writeText(url).then(()=> alert('Share link copied to clipboard') ).catch(()=> prompt('Copy this link', url));
+});
+
+function loadFromHash(){
+  if(!location.hash) return;
+  try{
+    const b64 = location.hash.slice(1);
+    const json = decodeURIComponent(escape(atob(b64)));
+    const snap = JSON.parse(json);
+    lastSnapshot = snap;
+    metricsEl.textContent = `Loaded shared snapshot for ${snap.symbol} (${snap.period}). Click Run Analysis to refresh live data.`;
+    rawEl.value = JSON.stringify(snap, null, 2);
+    if(snap.rolling && snap.rolling.dates) drawRollingChart(snap.rolling.dates, snap.rolling.ann, snap.rolling.vol, snap.rolling.sharpe);
+    if(snap.fundSeries && snap.idxSeries) drawPriceChart(snap.fundSeries.map(d=>d.date), snap.fundSeries.map(d=>d.close), snap.idxSeries.map(d=>d.close), []);
+  }catch(e){ console.warn('Invalid share link'); }
+}
+loadFromHash();
+
+/* ----------------------------
+  Reset
+----------------------------*/
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  location.hash = '';
+  selectedSymbol = null;
+  mfInput.value = '';
+  selectedMeta.textContent = 'No symbol selected';
+  metricsEl.textContent = 'Run analysis to compute metrics.';
+  rawEl.value = '';
+  destroyCharts();
+});
+
+/* ----------------------------
+  Auto-fit (for iframes)
+----------------------------*/
+function autoFit(){ const wrap = document.getElementById('appWrap'); wrap.style.width = '100%'; wrap.style.boxSizing = 'border-box'; }
+autoFit(); window.addEventListener('resize', autoFit);
+
+</script>
+</body>
+</html>
