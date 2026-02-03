@@ -1,7 +1,2 @@
-<html>
-<head><title>504 Gateway Time-out</title></head>
-<body>
-<center><h1>504 Gateway Time-out</h1></center>
-<hr><center>nginx</center>
-</body>
-</html>
+<head><title>Document Moved</title></head>
+<body><h1>Object Moved</h1>This document may be found <a HREF="https://portal.amfiindia.com/spages/NAVAll.txt">here</a></body>
