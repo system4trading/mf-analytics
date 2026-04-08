@@ -9,7 +9,7 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Fetch AMFI NAV
         run: |
           curl -o amfi.txt https://www.amfiindia.com/spages/NAVAll.txt
